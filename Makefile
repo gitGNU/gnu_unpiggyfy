@@ -1,10 +1,12 @@
 all: exe tags
 
+# @TODO FBR: use hmake to automate dependency maintenance
 exe: clean
-	ghc -W -Wall cmt_removal.hs -o unpig
+	ghc -W -Wall -c CommentRemoval.hs Main.hs
+	ghc -W -Wall -o unpig CommentRemoval.o Main.o
 
 clean:
 	rm -f *.o *.hi unpig
 
 tags:
-	hasktags -e cmt_removal.hs
+	hasktags -e Main.hs CommentRemoval.hs
