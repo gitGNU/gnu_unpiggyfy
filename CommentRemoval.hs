@@ -1,7 +1,9 @@
 module CommentRemoval (
     HighLevelToken,
     hltToString,
-    rmCmtsWrapper
+    rmCmtsWrapper,
+    lowLevelTokenizeWrapper,
+    highLevelTokenizeWrapper
 ) where
 
 import Control.Exception
@@ -18,9 +20,11 @@ type LongCmtStr  = String
 -- being made of different items :
 -- source code, comments, comment delimiters, etc.
 data LowLevelToken = CmtOrCode    Char
-                   | BeginCmtMark Token
-                   | EndCmtMark   Token
+                   | CmtBegin Token
+                   | CmtEnd   Token
                    | LineCmtMark  Token
+--                    | StringBegin  Token
+--                    | StringEnd    Token
                    deriving Show
 
 data HighLevelToken = Code     CodeStr
@@ -33,9 +37,6 @@ data ParserState = ReadingCode
                  | ReadingLongCmt
 -- @TODO FBR: to not trap the parser with "fake" tokens embedded in
 --            String consts, handle these soon:
---               | ReadingStringInCode
---               | ReadingStringInShortCmt
---               | ReadingStringInLongCmt
 -- @TODO: FBR: write a unix CLI tool removing comments language independently
 --        1) tokenize in {code | short comment | long comments}
 --        1') escape string consts from the parser
@@ -47,8 +48,8 @@ data ParserState = ReadingCode
 
 lltToString :: LowLevelToken -> String
 lltToString (CmtOrCode    s) = s:[]
-lltToString (BeginCmtMark s) = s
-lltToString (EndCmtMark   s) = s
+lltToString (CmtBegin s) = s
+lltToString (CmtEnd   s) = s
 lltToString (LineCmtMark  s) = s
 
 hltToString :: HighLevelToken -> String
@@ -60,8 +61,8 @@ promote :: ParserState -> LowLevelToken -> HighLevelToken
 promote ReadingCode     (CmtOrCode    x) = Code (x:[])
 promote ReadingShortCmt (CmtOrCode    x) = ShortCmt (x:[])
 promote ReadingLongCmt  (CmtOrCode    x) = LongCmt (x:[])
-promote _ (BeginCmtMark x) = LongCmt  x
-promote _ (EndCmtMark   x) = LongCmt  x
+promote _ (CmtBegin x) = LongCmt  x
+promote _ (CmtEnd   x) = LongCmt  x
 promote _ (LineCmtMark  x) = ShortCmt x
 
 startWithList :: [Token] -> String -> Maybe Token
@@ -78,12 +79,12 @@ firstMatchedTok [] _ _ _ = Nothing
 firstMatchedTok str@(c:cs) cmtStartList cmtEndList lineCmtList =
     case startWithList cmtStartList str of
       Just matched ->
-          Just (BeginCmtMark matched
+          Just (CmtBegin matched
                ,consumeTokenUnsafe matched str)
       Nothing ->
           case startWithList cmtEndList str of
             Just matched ->
-                Just (EndCmtMark matched
+                Just (CmtEnd matched
                      ,consumeTokenUnsafe matched str)
             Nothing ->
                 case startWithList lineCmtList str of
@@ -158,17 +159,17 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                   LineCmtMark _ ->
                       highLevelTokens (toks:others) ReadingShortCmt depth
                                       (factorize parserState tok lineAcc) acc
-                  BeginCmtMark _ ->
+                  CmtBegin _ ->
                       highLevelTokens (toks:others) ReadingLongCmt (depth+1)
                                       (factorize parserState tok lineAcc) acc
-                  EndCmtMark mark ->
+                  CmtEnd mark ->
                       error ("got EndCmtMArk while ReadingCode: " ++ mark)
             ReadingShortCmt ->
                 highLevelTokens (toks:others) ReadingShortCmt depth
                                 (factorize parserState tok lineAcc) acc
             ReadingLongCmt ->
                 case tok of
-                  EndCmtMark _ ->
+                  CmtEnd _ ->
                       let newDepth = depth - 1 in
                       if newDepth == 0 then
                           highLevelTokens (toks:others) ReadingCode newDepth
@@ -178,7 +179,7 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                           highLevelTokens
                             (toks:others) parserState newDepth
                             (factorize parserState tok lineAcc) acc
-                  BeginCmtMark _ ->
+                  CmtBegin _ ->
                       let newDepth = depth + 1 in
                       highLevelTokens (toks:others) parserState newDepth
                                       (factorize parserState tok lineAcc) acc
@@ -197,11 +198,11 @@ factorize state elt lst@(x:xs) =
           case x of
             Code code -> (Code (code ++ (lltToString elt))):xs
             _         -> (promote state elt):lst
-      BeginCmtMark _ ->
+      CmtBegin _ ->
           case x of
             LongCmt longCmt -> (LongCmt (longCmt ++ (lltToString elt))):xs
             _               -> (promote state elt):lst
-      EndCmtMark _ ->
+      CmtEnd _ ->
           case x of
             LongCmt longCmt -> (LongCmt (longCmt ++ (lltToString elt))):xs
             _               -> (promote state elt):lst
@@ -223,3 +224,14 @@ rmCmtsWrapper fileName =
       isCode :: HighLevelToken -> Bool
       isCode (Code _) = True
       isCode _        = False
+
+lowLevelTokenizeWrapper :: String -> IO [[LowLevelToken]]
+lowLevelTokenizeWrapper fileName =
+    do lowLevelToks <- tokenizeFile fileName [] [] ["--"]
+       return lowLevelToks
+
+highLevelTokenizeWrapper :: String -> IO [[HighLevelToken]]
+highLevelTokenizeWrapper fileName =
+    do lowLevelToks <- tokenizeFile fileName [] [] ["--"]
+       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
+       return highLevelToks
