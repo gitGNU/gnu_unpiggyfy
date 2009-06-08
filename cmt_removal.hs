@@ -3,11 +3,11 @@ import Data.Maybe
 import Data.List
 import System.IO
 
--- This program is free
--- software; you may redistribute and/or modify it under the terms of the
--- GNU General Public License as published by the Free Software
--- Foundation; Version 2 with the clarifications and exceptions described
--- below.  This guarantees your right to use, modify, and redistribute
+-- This program is free software; you may redistribute and/or modify it
+-- under the terms of the GNU General Public License as published by the Free
+-- Software Foundation; Version 2 with the clarifications and exceptions
+-- described below.
+-- This guarantees your right to use, modify, and redistribute
 -- this software under certain conditions.  If you wish to embed this
 -- technology into proprietary software, we sell alternative licenses
 -- (contact Francois BERENGER, the Unpiggyfy's project admin and owner).
@@ -24,10 +24,6 @@ import System.IO
 -- General Public License v2.0 for more details at
 -- http://www.gnu.org/licenses/gpl-2.0.html
 
-fst3 (a,_,_) = a
-snd3 (_,b,_) = b
-trd3 (_,_,c) = c
-
 type Token       = String
 type CodeStr     = String
 type ShortCmtStr = String
@@ -36,14 +32,16 @@ type LongCmtStr  = String
 -- A source file can be seen as a list of text lines. Each one
 -- being made of different items :
 -- source code, comments, comment delimiters, etc.
-data SrcLine = Code         CodeStr -- <high level>
-             | ShortCmt ShortCmtStr
-             | LongCmt  LongCmtStr  -- </high level>
-             | CmtOrCode    String  -- <low level>
-             | BeginCmtMark Token
-             | EndCmtMark   Token
-             | LineCmtMark  Token   -- </low level>
-             deriving Show
+data LowLevelToken = CmtOrCode    Char
+                   | BeginCmtMark Token
+                   | EndCmtMark   Token
+                   | LineCmtMark  Token
+                   deriving Show
+
+data HighLevelToken = Code     CodeStr
+                    | ShortCmt ShortCmtStr
+                    | LongCmt  LongCmtStr
+                    deriving Show
 
 data ParserState = ReadingCode
                  | ReadingShortCmt
@@ -53,26 +51,32 @@ data ParserState = ReadingCode
 --               | ReadingStringInCode
 --               | ReadingStringInShortCmt
 --               | ReadingStringInLongCmt
+-- @TODO: FBR: write a unix CLI tool removing comments language independently
 
-srcLineToString :: SrcLine -> String
-srcLineToString (Code         s) = s
-srcLineToString (ShortCmt     s) = s
-srcLineToString (LongCmt      s) = s
-srcLineToString (CmtOrCode    s) = s
-srcLineToString (BeginCmtMark s) = s
-srcLineToString (EndCmtMark   s) = s
-srcLineToString (LineCmtMark  s) = s
+lltToString :: LowLevelToken -> String
+lltToString (CmtOrCode    s) = s:[]
+lltToString (BeginCmtMark s) = s
+lltToString (EndCmtMark   s) = s
+lltToString (LineCmtMark  s) = s
+
+promote :: ParserState -> LowLevelToken -> HighLevelToken
+promote ReadingCode     (CmtOrCode    x) = Code (x:[])
+promote ReadingShortCmt (CmtOrCode    x) = ShortCmt (x:[])
+promote ReadingLongCmt  (CmtOrCode    x) = LongCmt (x:[])
+promote _ (BeginCmtMark x) = LongCmt  x
+promote _ (EndCmtMark   x) = LongCmt  x
+promote _ (LineCmtMark  x) = ShortCmt x
 
 startWithList :: [Token] -> String -> Maybe Token
 -- FBR: use a map here instead of explicit recursion ?
-startWithList [] str            = Nothing
+startWithList [] _ = Nothing
 startWithList (prfx:others) str
     | isPrefixOf prfx str = Just prfx
     | otherwise           = startWithList others str
 
 -- the remaining string is modified by a token or by a letter consumption
 firstMatchedTok :: String -> [Token] -> [Token] -> [Token]
-                -> Maybe (SrcLine, String)
+                -> Maybe (LowLevelToken, String)
 firstMatchedTok [] _ _ _ = Nothing
 firstMatchedTok str@(c:cs) cmtStartList cmtEndList lineCmtList =
     case startWithList cmtStartList str of
@@ -89,15 +93,15 @@ firstMatchedTok str@(c:cs) cmtStartList cmtEndList lineCmtList =
                   Just matched ->
                       Just (LineCmtMark matched
                            ,consumeTokenUnsafe matched str)
-                  Nothing -> Just (CmtOrCode (c:[]), cs)
+                  Nothing -> Just (CmtOrCode c, cs)
     where
-      -- !!! tok must be a prefix of str !!!
+      -- !!! tok _MUST_ be a prefix of str !!!
       consumeTokenUnsafe :: Token -> String -> String
-      consumeTokenUnsafe tok str = drop (length tok) str
+      consumeTokenUnsafe tok tokPrefixedStr = drop (length tok) tokPrefixedStr
 
 -- line to list of tokens
-tokenizeSrcLine :: [Token] -> [Token] -> [Token] -> [SrcLine]
-                -> String -> [SrcLine]
+tokenizeSrcLine :: [Token] -> [Token] -> [Token]
+                -> [LowLevelToken] -> String -> [LowLevelToken]
 tokenizeSrcLine cmtStartList cmtEndList lineCmtList acc srcLine =
     case firstMatchedTok srcLine cmtStartList cmtEndList lineCmtList of
       Nothing -> reverse acc
@@ -113,27 +117,28 @@ getLines fileName =
          Left err -> do print ("cannot open file named " ++ fileName ++
                                ": " ++ (show err))
                         return []
-         Right handle ->
-             do getLines' handle []
+         Right h ->
+             do getLines' h []
     where
       getLines' :: Handle -> [String] -> IO [String]
-      getLines' handle acc =
-          do mline <- try (hGetLine handle)
+      getLines' h acc =
+          do mline <- try (hGetLine h)
              case mline of
-               Left err -> return (reverse acc)
-               Right line -> getLines' handle (line:acc)
+               Left _ -> return (reverse acc)
+               Right line -> getLines' h (line:acc)
 
 -- file name to list of low level tokens
 tokenizeFile :: String -> [Token] -> [Token] -> [Token]
-             -> IO [[SrcLine]]
+             -> IO [[LowLevelToken]]
 tokenizeFile fileName cmtStartList cmtEndList lineCmtList =
-    do lines <- getLines fileName
+    do readLines <- getLines fileName
        return (map (tokenizeSrcLine cmtStartList cmtEndList lineCmtList [])
-                   lines)
+                   readLines)
 
 -- low to high level tokens
-highLevelTokens :: [[SrcLine]] -> ParserState -> Int -> [SrcLine] -> [[SrcLine]]
-                -> [[SrcLine]]
+highLevelTokens :: [[LowLevelToken]] -> ParserState -> Int
+                -> [HighLevelToken] -> [[HighLevelToken]]
+                -> [[HighLevelToken]]
 highLevelTokens [] _ _ _ acc = reverse acc
 highLevelTokens (line:others) parserState depth lineAcc acc =
     case line of
@@ -150,123 +155,79 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
           case parserState of
             ReadingCode ->
                 case tok of
-                  (CmtOrCode code) ->
-                      highLevelTokens
-                        (toks:others) parserState depth
-                        ((Code code):lineAcc) acc
-                  (LineCmtMark mark) ->
-                      highLevelTokens
-                        (toks:others) ReadingShortCmt depth
-                        ((ShortCmt mark):lineAcc) acc
-                  (BeginCmtMark mark) ->
-                      highLevelTokens
-                        (toks:others) ReadingLongCmt (depth+1)
-                        ((LongCmt mark):lineAcc) acc
+                  CmtOrCode _ ->
+                      highLevelTokens (toks:others) parserState depth
+                                      (factorize parserState tok lineAcc) acc
+                  LineCmtMark _ ->
+                      highLevelTokens (toks:others) ReadingShortCmt depth
+                                      (factorize parserState tok lineAcc) acc
+                  BeginCmtMark _ ->
+                      highLevelTokens (toks:others) ReadingLongCmt (depth+1)
+                                      (factorize parserState tok lineAcc) acc
+                  EndCmtMark mark ->
+                      error ("got EndCmtMArk while ReadingCode: " ++ mark)
             ReadingShortCmt ->
                 highLevelTokens (toks:others) ReadingShortCmt depth
-                                ((ShortCmt (srcLineToString tok)):lineAcc)
-                                acc
+                                (factorize parserState tok lineAcc) acc
             ReadingLongCmt ->
                 case tok of
-                  (EndCmtMark mark) ->
+                  EndCmtMark _ ->
                       let newDepth = depth - 1 in
                       if newDepth == 0 then
                           highLevelTokens (toks:others) ReadingCode newDepth
-                                          ((LongCmt mark):lineAcc) acc
+                                          (factorize parserState tok lineAcc)
+                                          acc
                       else
                           highLevelTokens
                             (toks:others) parserState newDepth
-                            ((LongCmt mark):lineAcc) acc
-                  (BeginCmtMark mark) ->
+                            (factorize parserState tok lineAcc) acc
+                  BeginCmtMark _ ->
                       let newDepth = depth + 1 in
                       highLevelTokens (toks:others) parserState newDepth
-                                      ((LongCmt mark):lineAcc) acc
+                                      (factorize parserState tok lineAcc) acc
+                  CmtOrCode _ ->
+                      highLevelTokens (toks:others) parserState depth
+                                      (factorize parserState tok lineAcc) acc
+                  LineCmtMark mark ->
+                      error ("got LineCmtMark while ReadingLongCmt: " ++ mark)
 
--- several consecutive high level tokens from the same line are combined into
--- only one
-factorize :: [[SrcLine]] -> ParserState
-          -> [CodeStr] -> [ShortCmtStr] -> [LongCmtStr]
-          -> [SrcLine]
-          -> [SrcLine]
-factorize [] _ _ _ _ acc = reverse acc
-factorize (line:others) parserState
-          codeAcc shortCmtAcc longCmtAcc acc = -- undefined
-    case line of
-      -- finished processing current line
-      [] ->
-          case parserState of
-            ReadingCode ->
-                factorize others parserState
-                          [] shortCmtAcc longCmtAcc
-                          ((Code (concat (reverse codeAcc))):acc)
-            ReadingShortCmt ->
-                -- reading a short comment is a state valid only on one line
-                -- until we know more about the next line
-                factorize others ReadingCode
-                          codeAcc [] longCmtAcc
-                          ((ShortCmt (concat (reverse shortCmtAcc))):acc)
-            ReadingLongCmt ->
-                factorize others parserState
-                          codeAcc shortCmtAcc []
-                          ((LongCmt (concat (reverse longCmtAcc))):acc)
-      -- continuing processing current line
-      (tok:toks) ->
-          case parserState of
-            ReadingCode ->
-                case tok of
-                  (Code code) ->
-                      factorize (toks:others) parserState
-                                (code:codeAcc) shortCmtAcc longCmtAcc acc
-                  (ShortCmt cmt) ->
-                      factorize (toks:others) ReadingShortCmt
-                                codeAcc (cmt:shortCmtAcc) longCmtAcc acc
-                  (LongCmt cmt) ->
-                      factorize (toks:others) ReadingLongCmt
-                                codeAcc shortCmtAcc (cmt:longCmtAcc) acc
-            ReadingShortCmt ->
-                case tok of
-                  (Code code) ->
-                      factorize (toks:others) ReadingCode
-                                (code:codeAcc) shortCmtAcc longCmtAcc acc
-                  (ShortCmt cmt) ->
-                      factorize (toks:others) parserState
-                                codeAcc (cmt:shortCmtAcc) longCmtAcc acc
-                  (LongCmt cmt) ->
-                      factorize (toks:others) ReadingLongCmt
-                                codeAcc shortCmtAcc (cmt:longCmtAcc) acc
-            ReadingLongCmt ->
-                case tok of
-                  (Code code) ->
-                      factorize (toks:others) ReadingCode
-                                (code:codeAcc) shortCmtAcc longCmtAcc acc
-                  (ShortCmt cmt) ->
-                      factorize (toks:others) ReadingShortCmt
-                                codeAcc (cmt:shortCmtAcc) longCmtAcc acc
-                  (LongCmt cmt) ->
-                      factorize (toks:others) parserState
-                                codeAcc shortCmtAcc (cmt:longCmtAcc) acc
+factorize :: ParserState -> LowLevelToken -> [HighLevelToken]
+          -> [HighLevelToken]
+factorize state elt [] = (promote state elt):[]
+factorize state elt lst@(x:xs) =
+    case elt of
+      CmtOrCode _ ->
+          case x of
+            Code code -> (Code (code ++ (lltToString elt))):xs
+            _         -> (promote state elt):lst
+      BeginCmtMark _ ->
+          case x of
+            LongCmt longCmt -> (LongCmt (longCmt ++ (lltToString elt))):xs
+            _               -> (promote state elt):lst
+      EndCmtMark _ ->
+          case x of
+            LongCmt longCmt -> (LongCmt (longCmt ++ (lltToString elt))):xs
+            _               -> (promote state elt):lst
+      LineCmtMark _ ->
+          case x of
+            ShortCmt shortCmt -> (ShortCmt (shortCmt ++ (lltToString elt))):xs
+            _                 -> (promote state elt):lst
 
-isLongCmt (LongCmt _) = True
-isLongCmt _           = False
-
-isShortCmt (ShortCmt _) = True
-isShortCmt _            = False
-
+isCode :: HighLevelToken -> Bool
 isCode (Code _) = True
 isCode _        = False
 
-isCmt x = isShortCmt x || isLongCmt x
-
-removeComments :: [SrcLine] -> [SrcLine]
-removeComments srcLine = filter isCode srcLine
+removeComments :: [[HighLevelToken]] -> [[HighLevelToken]]
+removeComments srcLine = map (filter isCode) srcLine
 
 -- test tokenization
-test :: IO [SrcLine]
-test =
+rmCmtsWrapper :: IO [[HighLevelToken]]
+rmCmtsWrapper =
     do lowLevelToks <- tokenizeFile "cmt_removal.hs" [] [] ["--"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
-           factorized = factorize highLevelToks ReadingCode [] [] [] []
-           codeOnly = removeComments factorized
+           codeOnly = removeComments highLevelToks
        return codeOnly
 
--- TODO: FBR: write a unix tool removing comments language independently
+main :: IO ()
+main = do res <- rmCmtsWrapper
+          print res
