@@ -2,10 +2,16 @@ module Main where
 
 import System.Environment (getArgs)
 
-import CommentRemoval (hltToString, rmCmtsWrapper)
+import CommentRemoval (hltToString)
+import CommentRemoval (rmCmtsWrapper)
+import CommentRemoval (lowLevelTokenizeWrapper, highLevelTokenizeWrapper)
 
 usage :: IO ()
-usage = error ("usage: unpig [-rc file-name] # remove comments")
+usage = error ("usage\n" ++
+               " -h | --help\n" ++
+               " -rc  file-name -> remove comments\n" ++
+               " -htok file-name -> high level tokenization\n" ++
+               " -ltok file-name -> low level tokenization")
 
 main :: IO ()
 main =
@@ -14,8 +20,17 @@ main =
        case args of
          [] -> usage
          x:xs ->
-             if x == "-rc"
+             if x == "--help" || x == "-h"
+             then usage
+             else if x == "-rc"
              then do res <- rmCmtsWrapper (head xs)
                      let res' = map (map hltToString) res
                      mapM_ putStrLn (map concat res')
+                     -- FBR: @TODO @BUG remove empty lines of former comments!
+             else if x == "-ltok"
+             then do res <- lowLevelTokenizeWrapper (head xs)
+                     mapM_ putStrLn (map show res)
+             else if x == "-htok"
+             then do res <- highLevelTokenizeWrapper (head xs)
+                     mapM_ putStrLn (map show res)
              else usage
