@@ -7,11 +7,11 @@ import CommentRemoval (rmCmtsWrapper)
 import CommentRemoval (lowLevelTokenizeWrapper, highLevelTokenizeWrapper)
 
 usage :: IO ()
-usage = error ("usage\n" ++
+usage = error ("usage\n" ++ -- FBR: use intercolate for \n insertion
                " -h | --help\n" ++
                " -rc  file-name -> remove comments\n" ++
-               " -htok file-name -> high level tokenization\n" ++
-               " -ltok file-name -> low level tokenization")
+               " -ltok file-name -> low level tokenization\n" ++
+               " -htok file-name -> high level tokenization\n")
 
 main :: IO ()
 main =
