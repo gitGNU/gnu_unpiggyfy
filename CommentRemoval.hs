@@ -3,7 +3,7 @@ module CommentRemoval (
     hltToString,
     rmCmtsWrapper,
     lowLevelTokenizeWrapper,
-    highLevelTokenizeWrapper
+    highLevelTokenizeWrapper,
 ) where
 
 import Control.Exception
@@ -41,12 +41,12 @@ data ParserState = ReadingCode
                  | ReadingStringInShortCmt
                  | ReadingStringInLongCmt
 
-lltToString :: LowLevelToken -> String
-lltToString (CmtOrCodeOrString s) = s:[]
-lltToString (CmtBegin          s) = s
-lltToString (CmtEnd            s) = s
-lltToString (LineCmtMark       s) = s
-lltToString (StringBeginOrEnd  s) = s
+-- lltToString :: LowLevelToken -> String
+-- lltToString (CmtOrCodeOrString s) = s:[]
+-- lltToString (CmtBegin          s) = s
+-- lltToString (CmtEnd            s) = s
+-- lltToString (LineCmtMark       s) = s
+-- lltToString (StringBeginOrEnd  s) = s
 
 hltToString :: HighLevelToken -> String
 hltToString (Code         s) = s
@@ -259,36 +259,15 @@ factorize :: ParserState -> LowLevelToken -> [HighLevelToken]
           -> [HighLevelToken]
 factorize state elt [] = (promote state elt):[]
 factorize state elt lst@(x:xs) =
-    case elt of
-      CmtOrCodeOrString _ ->
-          case x of
-            Code y -> (Code (y ++ (lltToString elt))):xs
-            ShortCmt y -> (ShortCmt (y ++ (lltToString elt))):xs
-            LongCmt y -> (LongCmt (y ++ (lltToString elt))):xs
-            StringInCode y -> (StringInCode (y ++ (lltToString elt))):xs
-            StringInShortCmt y -> (StringInShortCmt (y ++ (lltToString elt))):xs
-            StringInLongCmt  y -> (StringInLongCmt  (y ++ (lltToString elt))):xs
-      CmtBegin _ ->
-          case x of
-            LongCmt y -> (LongCmt (y ++ (lltToString elt))):xs
-            _         -> (promote state elt):lst
-      CmtEnd _ ->
-          case x of
-            LongCmt y -> (LongCmt (y ++ (lltToString elt))):xs
-            _         -> (promote state elt):lst
-      LineCmtMark _ ->
-          case x of
-            ShortCmt y -> (ShortCmt (y ++ (lltToString elt))):xs
-            _          -> (promote state elt):lst
-      StringBeginOrEnd _ ->
-          case x of
-            StringInCode     y -> (StringInCode
-                                   (y ++ (lltToString elt))):xs
-            StringInShortCmt y -> (StringInShortCmt
-                                   (y ++ (lltToString elt))):xs
-            StringInLongCmt  y -> (StringInLongCmt
-                                   (y ++ (lltToString elt))):xs
-            _ -> (promote state elt):lst
+    let elt' = promote state elt in
+    case (x, elt') of
+      (Code y, Code z)                         -> (Code (y ++ z)):xs
+      (ShortCmt y, ShortCmt z)                 -> (ShortCmt (y ++ z)):xs
+      (LongCmt y, LongCmt z)                   -> (LongCmt (y ++ z)):xs
+      (StringInCode y, StringInCode z)         -> (StringInCode (y ++ z)):xs
+      (StringInShortCmt y, StringInShortCmt z) -> (StringInShortCmt (y ++ z)):xs
+      (StringInLongCmt y, StringInLongCmt z)   -> (StringInLongCmt (y ++ z)):xs
+      _ -> elt':lst
 
 -- factorize short comments until the end of the current line
 factorizeShortCmtLine :: ParserState -> [LowLevelToken] -> [HighLevelToken]
