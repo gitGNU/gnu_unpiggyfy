@@ -130,8 +130,7 @@ getLines :: String -> IO [String]
 getLines fileName =
     do mfh <- try (openFile fileName ReadMode)
        case mfh of
-         Left err -> do print ("cannot open file named " ++ fileName ++
-                               ": " ++ (show err))
+         Left err -> do print err
                         return []
          Right h ->
              do getLines' h []
