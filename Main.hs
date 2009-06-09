@@ -1,5 +1,6 @@
 module Main where
 
+import Data.List (intersperse)
 import System.Environment (getArgs)
 
 import CommentRemoval (hltToString)
@@ -7,11 +8,12 @@ import CommentRemoval (rmCmtsWrapper)
 import CommentRemoval (lowLevelTokenizeWrapper, highLevelTokenizeWrapper)
 
 usage :: IO ()
-usage = error ("usage\n" ++ -- FBR: use intercolate for \n insertion
-               " -h | --help\n" ++
-               " -rc  file-name -> remove comments\n" ++
-               " -ltok file-name -> low level tokenization\n" ++
-               " -htok file-name -> high level tokenization\n")
+usage = error (concat (intersperse "\n"
+                         ["usage"
+                         ," -h | --help"
+                         ," -rc  file-name  -> remove comments"
+                         ," -ltok file-name -> low level tokenization"
+                         ," -htok file-name -> high level tokenization"]))
 
 main :: IO ()
 main =
