@@ -18,7 +18,7 @@ usage = (error . concat . (intersperse "\n"))
 main :: IO ()
 main =
     do args <- getArgs
---       mapM_ print args -- to debug command line handling
+--       mapM_ print args -- uncomment to inspect command line
        case args of
          [] -> usage
          x:xs ->
