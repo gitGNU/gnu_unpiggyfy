@@ -158,15 +158,10 @@ highLevelTokens :: [[LowLevelToken]] -> ParserState -> Int
 highLevelTokens [] _ _ _ acc = reverse acc
 highLevelTokens (line:others) parserState depth lineAcc acc =
     case line of
-      -- finished processing current line
-      [] -> case parserState of
-              -- reading a short comment is a state valid only on one line
-              -- until we know more about the next line
-              ReadingShortCmt -> highLevelTokens others ReadingCode depth []
-                                                 ((reverse lineAcc):acc)
-              _ -> highLevelTokens others parserState depth []
-                                   ((reverse lineAcc):acc)
-      -- continuing processing current line
+      -- finished current line
+      [] -> highLevelTokens others parserState
+                            depth [] ((reverse lineAcc):acc)
+      -- continuing current line
       (tok:toks) ->
           case parserState of
             ReadingCode ->
@@ -177,8 +172,9 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                          depth (factorize parserState tok lineAcc) acc
                   LineCmtMark _ ->
                       highLevelTokens
-                         (toks:others) ReadingShortCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         others ReadingCode
+                         depth (factorizeShortCmtLine
+                                  ReadingShortCmt line lineAcc) acc
                   CmtBegin _ ->
                       highLevelTokens
                          (toks:others) ReadingLongCmt
@@ -190,6 +186,7 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                          (toks:others) ReadingStringInCode
                          depth (factorize parserState tok lineAcc) acc
             ReadingShortCmt ->
+                -- state valid only until end of current line
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
@@ -263,29 +260,46 @@ factorize state elt lst@(x:xs) =
     case elt of
       CmtOrCodeOrString _ ->
           case x of
-            Code c -> (Code (c ++ (lltToString elt))):xs
-            _      -> (promote state elt):lst
+            Code             y ->
+                (Code             (y ++ (lltToString elt))):xs
+            ShortCmt         y ->
+                (ShortCmt         (y ++ (lltToString elt))):xs
+            LongCmt          y ->
+                (LongCmt          (y ++ (lltToString elt))):xs
+            StringInCode     y ->
+                (StringInCode     (y ++ (lltToString elt))):xs
+            StringInShortCmt y ->
+                (StringInShortCmt (y ++ (lltToString elt))):xs
+            StringInLongCmt  y ->
+                (StringInLongCmt  (y ++ (lltToString elt))):xs
       CmtBegin _ ->
           case x of
-            LongCmt l -> (LongCmt (l ++ (lltToString elt))):xs
+            LongCmt y -> (LongCmt (y ++ (lltToString elt))):xs
             _         -> (promote state elt):lst
       CmtEnd _ ->
           case x of
-            LongCmt l -> (LongCmt (l ++ (lltToString elt))):xs
+            LongCmt y -> (LongCmt (y ++ (lltToString elt))):xs
             _         -> (promote state elt):lst
       LineCmtMark _ ->
           case x of
-            ShortCmt s -> (ShortCmt (s ++ (lltToString elt))):xs
+            ShortCmt y -> (ShortCmt (y ++ (lltToString elt))):xs
             _          -> (promote state elt):lst
       StringBeginOrEnd _ ->
           case x of
-            StringInCode     s -> (StringInCode
-                                   (s ++ (lltToString elt))):xs
-            StringInShortCmt s -> (StringInShortCmt
-                                   (s ++ (lltToString elt))):xs
-            StringInLongCmt  s -> (StringInLongCmt
-                                   (s ++ (lltToString elt))):xs
+            StringInCode     y -> (StringInCode
+                                   (y ++ (lltToString elt))):xs
+            StringInShortCmt y -> (StringInShortCmt
+                                   (y ++ (lltToString elt))):xs
+            StringInLongCmt  y -> (StringInLongCmt
+                                   (y ++ (lltToString elt))):xs
             _ -> (promote state elt):lst
+
+-- factorize short comments until the end of the current line
+factorizeShortCmtLine :: ParserState -> [LowLevelToken] -> [HighLevelToken]
+                      -> [HighLevelToken]
+factorizeShortCmtLine _       []         acc = acc -- caller will reverse it
+factorizeShortCmtLine state   (tok:toks) acc =
+    factorizeShortCmtLine state toks (factorize state tok acc)
 
 rmCmtsWrapper :: String -> IO [[HighLevelToken]]
 rmCmtsWrapper fileName =
