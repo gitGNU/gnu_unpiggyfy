@@ -25,8 +25,6 @@ data LowLevelToken = CmtOrCodeOrString Char
                    | LineCmtMark       Token
                    | StringBeginOrEnd  Token
                    deriving Show
--- @TODO FBR: to not trap the parser with "fake" tokens embedded in
---            String consts, handle these soon:
 
 data HighLevelToken = Code     CodeStr
                     | ShortCmt ShortCmtStr
@@ -42,12 +40,11 @@ data ParserState = ReadingCode
                  | ReadingStringInCode
                  | ReadingStringInShortCmt
                  | ReadingStringInLongCmt
--- @TODO: 1) tokenize in {code | short comment | long comments},
---           embedding string consts
---        2) tokenize code in {const | keyword | spacing}
---        3) extract inter line indentation rules
+-- @TODO: 2)  tokenize code in {const | keyword | spacing}
+--        27) write a code compressor (removing all extra spacing/indentation)
+--        3)  extract inter line indentation rules
 --        3') apply indentation rules
---        4) extract intra line indentation rules
+--        4)  extract intra line indentation rules
 
 lltToString :: LowLevelToken -> String
 lltToString (CmtOrCodeOrString s) = s:[]
