@@ -29,6 +29,9 @@ main =
                      let res' = map (map hltToString) res
                      mapM_ putStrLn (map concat res')
                      -- FBR: @TODO @BUG remove empty lines of former comments!
+                     --      !!! ShortCmt are factorized too much in hl tokens:
+                     --          the next hl token  of code is seen as a short
+                     --          comment
              else if x == "-ltok"
              then do res <- lowLevelTokenizeWrapper (head xs)
                      mapM_ putStrLn (map show res)
