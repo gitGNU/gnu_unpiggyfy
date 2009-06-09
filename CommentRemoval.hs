@@ -40,11 +40,6 @@ data ParserState = ReadingCode
                  | ReadingStringInCode
                  | ReadingStringInShortCmt
                  | ReadingStringInLongCmt
--- @TODO: 2)  tokenize code in {const | keyword | spacing}
---        27) write a code compressor (removing all extra spacing/indentation)
---        3)  extract inter line indentation rules
---        3') apply indentation rules
---        4)  extract intra line indentation rules
 
 lltToString :: LowLevelToken -> String
 lltToString (CmtOrCodeOrString s) = s:[]
