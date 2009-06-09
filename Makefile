@@ -1,4 +1,4 @@
-all: exe tags
+all: exe
 
 # @TODO FBR: use hmake to automate dependency maintenance
 exe: clean
