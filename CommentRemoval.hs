@@ -159,8 +159,14 @@ highLevelTokens [] _ _ _ acc = reverse acc
 highLevelTokens (line:others) parserState depth lineAcc acc =
     case line of
       -- finished current line
-      [] -> highLevelTokens others parserState
-                            depth [] ((reverse lineAcc):acc)
+      [] -> case parserState of
+              ReadingShortCmt ->
+                  -- state only valid until end of current line
+                  highLevelTokens others ReadingCode
+                                  depth [] ((reverse lineAcc):acc)
+              _ ->
+                  highLevelTokens others parserState
+                                  depth [] ((reverse lineAcc):acc)
       -- continuing current line
       (tok:toks) ->
           case parserState of
@@ -172,9 +178,8 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                          depth (factorize parserState tok lineAcc) acc
                   LineCmtMark _ ->
                       highLevelTokens
-                         others ReadingCode
-                         depth (factorizeShortCmtLine
-                                  ReadingShortCmt line lineAcc) acc
+                         (toks:others) ReadingShortCmt
+                         depth (factorize ReadingShortCmt tok lineAcc) acc
                   CmtBegin _ ->
                       highLevelTokens
                          (toks:others) ReadingLongCmt
@@ -186,15 +191,12 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                          (toks:others) ReadingStringInCode
                          depth (factorize parserState tok lineAcc) acc
             ReadingShortCmt ->
-                -- state valid only until end of current line
-                case tok of
-                  StringBeginOrEnd _ ->
-                      highLevelTokens
-                         (toks:others) ReadingStringInShortCmt
-                         depth (factorize parserState tok lineAcc) acc
-                  _ -> highLevelTokens
-                         (toks:others) ReadingShortCmt
-                         depth (factorize parserState tok lineAcc) acc
+                  -- state valid until end of current line,
+                  -- whatever this line contains, so we ignore its tokens
+                  highLevelTokens
+                      ([]:others) ReadingCode
+                      depth (factorizeShortCmtLine
+                               parserState line lineAcc) acc
             ReadingLongCmt ->
                 case tok of
                   CmtEnd _ ->
@@ -260,18 +262,12 @@ factorize state elt lst@(x:xs) =
     case elt of
       CmtOrCodeOrString _ ->
           case x of
-            Code             y ->
-                (Code             (y ++ (lltToString elt))):xs
-            ShortCmt         y ->
-                (ShortCmt         (y ++ (lltToString elt))):xs
-            LongCmt          y ->
-                (LongCmt          (y ++ (lltToString elt))):xs
-            StringInCode     y ->
-                (StringInCode     (y ++ (lltToString elt))):xs
-            StringInShortCmt y ->
-                (StringInShortCmt (y ++ (lltToString elt))):xs
-            StringInLongCmt  y ->
-                (StringInLongCmt  (y ++ (lltToString elt))):xs
+            Code y -> (Code (y ++ (lltToString elt))):xs
+            ShortCmt y -> (ShortCmt (y ++ (lltToString elt))):xs
+            LongCmt y -> (LongCmt (y ++ (lltToString elt))):xs
+            StringInCode y -> (StringInCode (y ++ (lltToString elt))):xs
+            StringInShortCmt y -> (StringInShortCmt (y ++ (lltToString elt))):xs
+            StringInLongCmt  y -> (StringInLongCmt  (y ++ (lltToString elt))):xs
       CmtBegin _ ->
           case x of
             LongCmt y -> (LongCmt (y ++ (lltToString elt))):xs
@@ -297,8 +293,8 @@ factorize state elt lst@(x:xs) =
 -- factorize short comments until the end of the current line
 factorizeShortCmtLine :: ParserState -> [LowLevelToken] -> [HighLevelToken]
                       -> [HighLevelToken]
-factorizeShortCmtLine _       []         acc = acc -- caller will reverse it
-factorizeShortCmtLine state   (tok:toks) acc =
+factorizeShortCmtLine _ [] acc = acc -- caller will reverse acc
+factorizeShortCmtLine state (tok:toks) acc =
     factorizeShortCmtLine state toks (factorize state tok acc)
 
 rmCmtsWrapper :: String -> IO [[HighLevelToken]]
