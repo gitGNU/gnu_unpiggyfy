@@ -8,17 +8,17 @@ import CommentRemoval (rmCmtsWrapper)
 import CommentRemoval (lowLevelTokenizeWrapper, highLevelTokenizeWrapper)
 
 usage :: IO ()
-usage = error (concat (intersperse "\n"
-                         ["usage"
-                         ," -h | --help"
-                         ," -rc  file-name  -> remove comments"
-                         ," -ltok file-name -> low level tokenization"
-                         ," -htok file-name -> high level tokenization"]))
+usage = (error . concat . (intersperse "\n"))
+            ["usage"
+            ," -h | --help"
+            ," -rc  file-name  -> remove comments"
+            ," -ltok file-name -> low level tokenization"
+            ," -htok file-name -> high level tokenization"]
 
 main :: IO ()
 main =
     do args <- getArgs
---       mapM_ print args
+--       mapM_ print args -- to debug command line handling
        case args of
          [] -> usage
          x:xs ->
