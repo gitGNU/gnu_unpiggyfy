@@ -26,9 +26,6 @@ main =
              then do res <- rmCmtsWrapper (head xs)
                      let res' = map (map hltToString) res
                      mapM_ putStrLn (map concat res')
-                     -- FBR: @SMALL_BUG remove empty lines of former comments
-                     -- @TODO more tests are needed for StringIncode
-                     -- factorization
              else if x == "-ltok"
              then do res <- lowLevelTokenizeWrapper (head xs)
                      mapM_ putStrLn (map show res)
