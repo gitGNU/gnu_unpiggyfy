@@ -19,7 +19,7 @@ type LongCmtStr  = String
 -- A source file can be seen as a list of text lines. Each one
 -- being made of different items :
 -- source code, comments, comment delimiters, etc.
-data LowLevelToken = CmtOrCodeOrString Char
+data LowLevelToken = CmtOrCodeOrString Token
                    | CmtBegin          Token
                    | CmtEnd            Token
                    | LineCmtMark       Token
@@ -57,12 +57,12 @@ hltToString (StringInShortCmt s) = s
 hltToString (StringInLongCmt  s) = s
 
 promote :: ParserState -> LowLevelToken -> HighLevelToken
-promote ReadingCode             (CmtOrCodeOrString x) = Code             (x:[])
-promote ReadingShortCmt         (CmtOrCodeOrString x) = ShortCmt         (x:[])
-promote ReadingLongCmt          (CmtOrCodeOrString x) = LongCmt          (x:[])
-promote ReadingStringInCode     (CmtOrCodeOrString x) = StringInCode     (x:[])
-promote ReadingStringInShortCmt (CmtOrCodeOrString x) = StringInShortCmt (x:[])
-promote ReadingStringInLongCmt  (CmtOrCodeOrString x) = StringInLongCmt  (x:[])
+promote ReadingCode             (CmtOrCodeOrString x) = Code             x
+promote ReadingShortCmt         (CmtOrCodeOrString x) = ShortCmt         x
+promote ReadingLongCmt          (CmtOrCodeOrString x) = LongCmt          x
+promote ReadingStringInCode     (CmtOrCodeOrString x) = StringInCode     x
+promote ReadingStringInShortCmt (CmtOrCodeOrString x) = StringInShortCmt x
+promote ReadingStringInLongCmt  (CmtOrCodeOrString x) = StringInLongCmt  x
 promote ReadingCode             (StringBeginOrEnd x)  = StringInCode     x
 promote ReadingShortCmt         (StringBeginOrEnd x)  = StringInShortCmt x
 promote ReadingLongCmt          (StringBeginOrEnd x)  = StringInLongCmt  x
@@ -75,7 +75,7 @@ promote ReadingStringInCode     (LineCmtMark x)       = StringInCode     x
 promote _                       (LineCmtMark x)       = ShortCmt         x
 
 startWithList :: [Token] -> String -> Maybe Token
--- FBR: use a map here instead of explicit recursion ?
+-- FBR: use a map/fold here instead of explicit recursion ?
 startWithList [] _ = Nothing
 startWithList (prfx:others) str
     | isPrefixOf prfx str = Just prfx
@@ -107,7 +107,8 @@ firstMatchedTok str@(c:cs) cmtStarters cmtStopers shortCmtStarters
                         Just matched ->
                             Just (LineCmtMark matched
                                  ,consumeTokenUnsafe matched str)
-                        Nothing -> Just (CmtOrCodeOrString c, cs)
+                        Nothing -> Just (CmtOrCodeOrString (c:[])
+                                        ,cs)
     where
       -- !!! tok _MUST_ be a prefix of str !!!
       consumeTokenUnsafe :: Token -> String -> String
@@ -123,7 +124,23 @@ tokenizeSrcLine cmtStarters cmtStopers shortCmtStarters stringDelims
       Nothing -> reverse acc
       Just (tok, remaining) -> tokenizeSrcLine
                                  cmtStarters cmtStopers shortCmtStarters
-                                 stringDelims (tok:acc) remaining
+                                 stringDelims (factorize tok acc) remaining
+    where
+      factorize :: LowLevelToken -> [LowLevelToken] -> [LowLevelToken]
+      factorize elt [] = elt:[]
+      factorize elt lst@(x:xs) =
+        case (elt, x) of
+          (CmtOrCodeOrString y, CmtOrCodeOrString z) ->
+              (CmtOrCodeOrString (z ++ y)):xs
+          (CmtBegin y, CmtBegin z) ->
+              (CmtBegin (z ++ y)):xs
+          (CmtEnd y, CmtEnd z) ->
+              (CmtEnd (z ++ y)):xs
+          (LineCmtMark y, LineCmtMark z) ->
+              (LineCmtMark (z ++ y)):xs
+          (StringBeginOrEnd y, StringBeginOrEnd z) ->
+              (StringBeginOrEnd (z ++ y)):xs
+          _ -> elt:lst
 
 -- file name to list of lines read
 getLines :: String -> IO [String]
@@ -191,12 +208,15 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                          (toks:others) ReadingStringInCode
                          depth (factorize parserState tok lineAcc) acc
             ReadingShortCmt ->
-                  -- state valid until end of current line,
-                  -- whatever this line contains, so we ignore its tokens
-                  highLevelTokens
-                      ([]:others) ReadingCode
-                      depth (factorizeShortCmtLine
-                               parserState line lineAcc) acc
+                case tok of
+                  StringBeginOrEnd _ ->
+                      highLevelTokens
+                         (toks:others) ReadingStringInShortCmt
+                         depth (factorize parserState tok lineAcc) acc
+                  _ ->
+                      highLevelTokens
+                         (toks:others) parserState
+                         depth (factorize parserState tok lineAcc) acc
             ReadingLongCmt ->
                 case tok of
                   CmtEnd _ ->
@@ -254,27 +274,26 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                       highLevelTokens
                          (toks:others) parserState
                          depth (factorize parserState tok lineAcc) acc
-
-factorize :: ParserState -> LowLevelToken -> [HighLevelToken]
-          -> [HighLevelToken]
-factorize state elt [] = (promote state elt):[]
-factorize state elt lst@(x:xs) =
-    let elt' = promote state elt in
-    case (x, elt') of
-      (Code y, Code z)                         -> (Code (y ++ z)):xs
-      (ShortCmt y, ShortCmt z)                 -> (ShortCmt (y ++ z)):xs
-      (LongCmt y, LongCmt z)                   -> (LongCmt (y ++ z)):xs
-      (StringInCode y, StringInCode z)         -> (StringInCode (y ++ z)):xs
-      (StringInShortCmt y, StringInShortCmt z) -> (StringInShortCmt (y ++ z)):xs
-      (StringInLongCmt y, StringInLongCmt z)   -> (StringInLongCmt (y ++ z)):xs
-      _ -> elt':lst
-
--- factorize short comments until the end of the current line
-factorizeShortCmtLine :: ParserState -> [LowLevelToken] -> [HighLevelToken]
-                      -> [HighLevelToken]
-factorizeShortCmtLine _ [] acc = acc -- caller will reverse acc
-factorizeShortCmtLine state (tok:toks) acc =
-    factorizeShortCmtLine state toks (factorize state tok acc)
+    where
+      factorize :: ParserState -> LowLevelToken -> [HighLevelToken]
+                -> [HighLevelToken]
+      factorize state elt [] = (promote state elt):[]
+      factorize state elt lst@(x:xs) =
+        let elt' = promote state elt in
+        case (x, elt') of
+          (Code y, Code z) ->
+              (Code (y ++ z)):xs
+          (ShortCmt y, ShortCmt z) ->
+              (ShortCmt (y ++ z)):xs
+          (LongCmt y, LongCmt z) ->
+              (LongCmt (y ++ z)):xs
+          (StringInCode y, StringInCode z) ->
+              (StringInCode (y ++ z)):xs
+          (StringInShortCmt y, StringInShortCmt z) ->
+              (StringInShortCmt (y ++ z)):xs
+          (StringInLongCmt y, StringInLongCmt z) ->
+              (StringInLongCmt (y ++ z)):xs
+          _ -> elt':lst
 
 rmCmtsWrapper :: String -> IO [[HighLevelToken]]
 rmCmtsWrapper fileName =
