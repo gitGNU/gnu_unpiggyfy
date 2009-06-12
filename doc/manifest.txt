@@ -1,0 +1,12 @@
+Unpiggyfy can be used for two different purposes : indenting
+source code not formated as you like, or doing the opposite function
+(extracting formating rules of well-indented code).
+Each programming language will be supported via a specific
+configuration file (the language's key-words and maybe some
+additional plug-in if the semantics of the language is indentation-dependent, as for Python and Cobol for example).
+Unpiggyfy can be useful when maintaining source code not written by
+you, in order to make it more readable. It could also be useful
+before a CVS commit, in order to remove indentation changes you introduced only for you comfort (the others are not concerned with them but more on the semantics changes you made). Hence your
+code should be commited only with project-wide indentation rules.
+Unpiggyfy is written in Haskell, a strongly typed purely
+functional language.
