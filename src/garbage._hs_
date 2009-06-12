@@ -1,0 +1,30 @@
+fst3 (a,_,_) = a
+snd3 (_,b,_) = b
+trd3 (_,_,c) = c
+
+isLongCmt (LongCmt _) = True
+isLongCmt _           = False
+
+isShortCmt (ShortCmt _) = True
+isShortCmt _            = False
+
+isCmt x = isShortCmt x || isLongCmt x
+
+hltToString :: HighLevelToken -> String
+hltToString (Code         s) = s
+hltToString (ShortCmt     s) = s
+hltToString (LongCmt      s) = s
+
+-- factorize short comments until the end of the current line
+factorizeShortCmtLine :: ParserState -> [LowLevelToken] -> [HighLevelToken]
+                      -> [HighLevelToken]
+factorizeShortCmtLine _ [] acc = acc -- caller will reverse acc
+factorizeShortCmtLine state (tok:toks) acc =
+    factorizeShortCmtLine state toks (factorize state tok acc)
+
+lltToString :: LowLevelToken -> String
+lltToString (CmtOrCodeOrString s) = s:[]
+lltToString (CmtBegin          s) = s
+lltToString (CmtEnd            s) = s
+lltToString (LineCmtMark       s) = s
+lltToString (StringBeginOrEnd  s) = s
