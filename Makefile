@@ -1,12 +1,31 @@
-all: exe
+BIN      = bin
+BUILD    = build
+DOC      = doc
+SRC      = src
+TMP      = tmp
 
-# @TODO FBR: use hmake to automate dependency maintenance
-exe: clean
-	ghc -W -Wall -c CommentRemoval.hs Main.hs
-	ghc -W -Wall -o unpig CommentRemoval.o Main.o
+UNPIG    = $(BIN)/unpig
 
-clean:
-	rm -f *.o *.hi unpig
+HC       = ghc
+HC_FLAGS = -W -Wall
+
+SRCS = $(SRC)/CommentRemoval.hs  $(SRC)/Main.hs
+OBJS = $(BUILD)/CommentRemoval.o $(BUILD)/Main.o
+
+unpig: $(OBJS)
+	rm -f $(UNPIG)
+	$(HC) $(HC_FLAGS) -o $(UNPIG) $(OBJS)
+
+$(BUILD)/CommentRemoval.o:
+	$(HC) $(HC_FLAGS) -hidir $(BUILD) -odir $(BUILD) \
+              -c $(SRC)/CommentRemoval.hs
+
+$(BUILD)/Main.o:
+	$(HC) $(HC_FLAGS) -hidir $(BUILD) -odir $(BUILD) -i$(BUILD) \
+              -c $(SRC)/Main.hs
 
 tags:
-	hasktags -e Main.hs CommentRemoval.hs
+	hasktags -e $(SRCS)
+
+clean:
+	rm -f $(BUILD)/*.o $(BUILD)/*.hi $(UNPIG)
