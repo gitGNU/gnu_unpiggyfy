@@ -1,6 +1,4 @@
-@TODO: 1)  reorganize project structure (src, build, doc, etc.)
-       1') use variables in the Makefile to ease its maintenance
-       2)  tokenize code in {const | keyword | spacing}
+@TODO: 2)  tokenize code in {const | keyword | spacing}
        2') write a code compressor (removing all extra spacing/indentation)
        3)  extract inter line indentation rules
        3') apply indentation rules
