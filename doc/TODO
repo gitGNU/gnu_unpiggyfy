@@ -1,6 +1,8 @@
 @TODO: 2)   tokenize code in {const | keyword | spacing}
        2')  write a code compressor (removing all extra spacing/indentation)
-       2'') externalize language dependent keywords to the CLI
+       2'') put other languages in tests (C, Java, C++, PHP?), one after the
+            other
        3)   extract inter line indentation rules
-       3')  apply indentation rules
+       3')  externalize language dependent keywords to the CLI
+       3'') apply indentation rules
        4)   extract intra line indentation rules
