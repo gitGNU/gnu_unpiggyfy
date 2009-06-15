@@ -12,6 +12,9 @@ HC_FLAGS = -W -Wall
 SRCS = $(SRC)/CommentRemoval.hs  $(SRC)/Main.hs
 OBJS = $(BUILD)/CommentRemoval.o $(BUILD)/Main.o
 
+test: unpig
+	bin/test.sh
+
 unpig: $(OBJS)
 	rm -f $(UNPIG)
 	$(HC) $(HC_FLAGS) -o $(UNPIG) $(OBJS)
@@ -23,9 +26,6 @@ $(BUILD)/CommentRemoval.o:
 $(BUILD)/Main.o:
 	$(HC) $(HC_FLAGS) -hidir $(BUILD) -odir $(BUILD) -i$(BUILD) \
               -c $(SRC)/Main.hs
-
-test:
-	bin/test.sh
 
 tags:
 	hasktags -e $(SRCS)
