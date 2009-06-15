@@ -14,9 +14,6 @@ import Data.List
 import System.IO
 
 type Token       = String
-type CodeStr     = String
-type ShortCmtStr = String
-type LongCmtStr  = String
 
 -- A source file can be seen as a list of text lines. Each one
 -- being made of different items :
@@ -29,13 +26,28 @@ data LowLevelToken = CmtOrCodeOrString Token
                    | EscapedChar       Token
                    deriving Show
 
-data HighLevelToken = Code     CodeStr
-                    | ShortCmt ShortCmtStr
-                    | LongCmt  LongCmtStr
+type CodeStr     = String
+type ShortCmtStr = String
+type LongCmtStr  = String
+
+data HighLevelToken = Code             CodeStr
+                    | ShortCmt         ShortCmtStr
+                    | LongCmt          LongCmtStr
                     | StringInCode     CodeStr
                     | StringInShortCmt ShortCmtStr
                     | StringInLongCmt  LongCmtStr
                     deriving Show
+
+type VarOrFunOrConstStr   = String
+type KeywordStr = String
+
+data SpacingChar = Space | Tab
+                 deriving Show
+
+data CodeToken = VarOrFunOrConst VarOrFunOrConstStr
+               | Keyword         KeywordStr
+               | Spacing         [SpacingChar]
+               deriving Show
 
 data ParserState = ReadingCode
                  | ReadingShortCmt
