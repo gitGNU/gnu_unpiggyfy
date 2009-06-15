@@ -424,20 +424,20 @@ tokenizeCode (tok:toks) keywords acc =
       _ -> tokenizeCode toks keywords acc -- ignore non Code token
     where
       parseCode :: CodeStr -> [KeywordStr] -> [CodeToken] -> [CodeToken]
-      parseCode [] _ acc = reverse acc
-      parseCode code@(c:cs) kwds acc =
+      parseCode [] _ acc' = reverse acc'
+      parseCode code@(c:cs) kwds acc' =
           case startWithList kwds code of
             Just kwd -> -- do we have a keyword?
                 parseCode (consumeTokenUnsafe kwd code) kwds
-                          (factorize (Keyword kwd) acc)
+                          (factorize (Keyword kwd) acc')
             Nothing -> -- do we have some spacing?
                 case takeWhile spaceOrTabOnly code of
                   [] -> -- no, default fallback
                       parseCode cs kwds
-                                (factorize (VarOrFunOrConst (c:[])) acc)
+                                (factorize (VarOrFunOrConst (c:[])) acc')
                   spacing -> -- yes we have some spacing
                       parseCode (consumeTokenUnsafe spacing code) kwds
-                                (factorize (Spacing spacing) acc)
+                                (factorize (Spacing spacing) acc')
 
       spaceOrTabOnly :: Char -> Bool
       spaceOrTabOnly ' '  = True
@@ -445,18 +445,16 @@ tokenizeCode (tok:toks) keywords acc =
       spaceOrTabOnly _    = False
 
       factorize :: CodeToken -> [CodeToken] -> [CodeToken]
-      factorize tok [] = tok:[]
-      factorize tok acc@(a:as) =
-          case (tok, a) of
+      factorize tok' [] = tok':[]
+      factorize tok' acc'@(a:as) =
+          case (tok', a) of
             (VarOrFunOrConst x, VarOrFunOrConst y) ->
                 (VarOrFunOrConst (y ++ x)):as
             (Keyword x, Keyword y) ->
                 (Keyword (y ++ x)):as
             (Spacing x, Spacing y) ->
                 (Spacing (y ++ x)):as
-            _ -> tok:acc
-
-_ignoreWarnings = (tokenizeCode)
+            _ -> tok':acc'
 
 rmCmtsWrapper :: String -> IO [[HighLevelToken]]
 rmCmtsWrapper fileName =
