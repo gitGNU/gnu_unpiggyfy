@@ -16,7 +16,6 @@ test: unpig
 	bin/test.sh
 
 unpig: $(OBJS)
-	rm -f $(UNPIG)
 	$(HC) $(HC_FLAGS) -o $(UNPIG) $(OBJS)
 
 $(BUILD)/CommentRemoval.o:
@@ -31,7 +30,7 @@ tags:
 	hasktags -e $(SRCS)
 
 clean:
-	rm -f $(BUILD)/*.o $(BUILD)/*.hi $(UNPIG)
+	rm -f $(BUILD)/*.o $(BUILD)/*.hi $(TMP)/*
 
 help:
 	echo "usage: make [unpig | test | tags | clean | help]"
