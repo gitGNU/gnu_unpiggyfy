@@ -45,7 +45,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-test="REMOVE COMMENTS"
+test="REMOVING COMMENTS"
 test_03_in=data/CommentRemoval.test_input
 test_03_out=tmp/CommentRemoval.test_03_output
 test_03_ref=data/CommentRemoval.test_03_reference
