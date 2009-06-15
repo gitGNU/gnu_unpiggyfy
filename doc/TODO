@@ -1,5 +1,4 @@
-@TODO: 1)   functional and regression test for -llt
-       1')  functional and regression test for -htl
+@TODO: 1')  functional and regression test for -htl
        1'') functional and regression test for -rc
        2)   tokenize code in {const | keyword | spacing}
        2')  write a code compressor (removing all extra spacing/indentation)
