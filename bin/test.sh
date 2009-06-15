@@ -12,7 +12,7 @@ test_01_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
 
-unpig -llt $test_01_in > $test_01_out
+bin/unpig -llt $test_01_in > $test_01_out
 diff $test_01_out $test_01_ref > $test_01_diff
 
 if [ `wc -c $test_01_diff | awk '{print $1}'` -ne 0 ] ; then
@@ -31,7 +31,7 @@ test_02_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
 
-unpig -hlt $test_02_in > $test_02_out
+bin/unpig -hlt $test_02_in > $test_02_out
 diff $test_02_out $test_02_ref > $test_02_diff
 
 if [ `wc -c $test_02_diff | awk '{print $1}'` -ne 0 ] ; then
