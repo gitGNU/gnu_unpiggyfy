@@ -4,10 +4,10 @@
 
 echo "### tests begin ###"
 
-test="low level tokenization"
+test="LOW LEVEL TOKENIZATION"
 test_01_in=data/CommentRemoval.test_input
-test_01_out=tmp/CommentRemoval.test_output
-test_01_ref=data/CommentRemoval.test_reference
+test_01_out=tmp/CommentRemoval.test_01_output
+test_01_ref=data/CommentRemoval.test_01_reference
 test_01_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
@@ -16,6 +16,25 @@ unpig -llt $test_01_in > $test_01_out
 diff $test_01_out $test_01_ref > $test_01_diff
 
 if [ `wc -c $test_01_diff | awk '{print $1}'` -ne 0 ] ; then
+    echo "###"$test" ERRORS:"
+    cat tmp/CommentRemoval.test_diff
+    exit 1
+else
+    echo "OK"
+fi
+
+test="HIGH LEVEL TOKENIZATION"
+test_02_in=data/CommentRemoval.test_input
+test_02_out=tmp/CommentRemoval.test_02_output
+test_02_ref=data/CommentRemoval.test_02_reference
+test_02_diff=tmp/CommentRemoval.test_diff
+
+echo "testing "$test"..."
+
+unpig -hlt $test_02_in > $test_02_out
+diff $test_02_out $test_02_ref > $test_02_diff
+
+if [ `wc -c $test_02_diff | awk '{print $1}'` -ne 0 ] ; then
     echo "###"$test" ERRORS:"
     cat tmp/CommentRemoval.test_diff
     exit 1
