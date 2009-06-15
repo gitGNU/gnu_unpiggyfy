@@ -24,8 +24,14 @@ $(BUILD)/Main.o:
 	$(HC) $(HC_FLAGS) -hidir $(BUILD) -odir $(BUILD) -i$(BUILD) \
               -c $(SRC)/Main.hs
 
+test:
+	bin/test.sh
+
 tags:
 	hasktags -e $(SRCS)
 
 clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.hi $(UNPIG)
+
+help:
+	echo "usage: make [unpig | test | tags | clean | help]"
