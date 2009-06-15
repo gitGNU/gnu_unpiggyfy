@@ -13,7 +13,7 @@ import Data.Maybe
 import Data.List
 import System.IO
 
-type Token       = String
+type Token = String
 
 -- A source file can be seen as a list of text lines. Each one
 -- being made of different items :
@@ -38,15 +38,13 @@ data HighLevelToken = Code             CodeStr
                     | StringInLongCmt  LongCmtStr
                     deriving Show
 
-type VarOrFunOrConstStr   = String
-type KeywordStr = String
-
-data SpacingChar = Space | Tab
-                 deriving Show
+type VarOrFunOrConstStr = String
+type KeywordStr         = String
+type SpacingChar        = String
 
 data CodeToken = VarOrFunOrConst VarOrFunOrConstStr
                | Keyword         KeywordStr
-               | Spacing         [SpacingChar]
+               | Spacing         SpacingChar
                deriving Show
 
 data ParserState = ReadingCode
@@ -118,7 +116,7 @@ promote _                       (CmtEnd            x) = LongCmt          x
 promote ReadingStringInCode     (LineCmtMark       x) = StringInCode     x
 promote _                       (LineCmtMark       x) = ShortCmt         x
 
-startWithList :: [Token] -> String -> Maybe Token
+startWithList :: [String] -> String -> Maybe String
 -- FBR: use a map/fold here instead of explicit recursion ?
 startWithList [] _ = Nothing
 startWithList (prfx:others) str
@@ -158,10 +156,10 @@ firstMatchedTok str@(c:cs) cmtStarters cmtStopers shortCmtStarters
                                        ,consumeTokenUnsafe matched str)
                               Nothing -> Just (CmtOrCodeOrString (c:[])
                                               ,cs)
-    where
-      -- !!! tok _MUST_ be a prefix of str !!!
-      consumeTokenUnsafe :: Token -> String -> String
-      consumeTokenUnsafe tok tokPrefixedStr = drop (length tok) tokPrefixedStr
+
+-- !!! tok _MUST_ be a prefix of str !!!
+consumeTokenUnsafe :: Token -> String -> String
+consumeTokenUnsafe tok tokPrefixedStr = drop (length tok) tokPrefixedStr
 
 -- line to list of tokens
 tokenizeSrcLine :: Bool
@@ -415,6 +413,50 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
           (StringInLongCmt y, StringInLongCmt z) ->
               (StringInLongCmt (y ++ z)):xs
           _ -> elt':lst
+
+-- HighLevelTokens to CodeTokens, non Code high level tokens disappear
+tokenizeCode :: [HighLevelToken] -> [KeywordStr] -> [[CodeToken]]
+             -> [CodeToken]
+tokenizeCode [] _ acc = (concat . reverse) acc
+tokenizeCode (tok:toks) keywords acc =
+    case tok of
+      Code c -> tokenizeCode toks keywords ((parseCode c keywords []):acc)
+      _ -> tokenizeCode toks keywords acc -- ignore non Code token
+    where
+      parseCode :: CodeStr -> [KeywordStr] -> [CodeToken] -> [CodeToken]
+      parseCode [] _ acc = reverse acc
+      parseCode code@(c:cs) kwds acc =
+          case startWithList kwds code of
+            Just kwd -> -- do we have a keyword?
+                parseCode (consumeTokenUnsafe kwd code) kwds
+                          (factorize (Keyword kwd) acc)
+            Nothing -> -- do we have some spacing?
+                case takeWhile spaceOrTabOnly code of
+                  [] -> -- no, default fallback
+                      parseCode cs kwds
+                                (factorize (VarOrFunOrConst (c:[])) acc)
+                  spacing -> -- yes we have some spacing
+                      parseCode (consumeTokenUnsafe spacing code) kwds
+                                (factorize (Spacing spacing) acc)
+
+      spaceOrTabOnly :: Char -> Bool
+      spaceOrTabOnly ' '  = True
+      spaceOrTabOnly '\t' = True
+      spaceOrTabOnly _    = False
+
+      factorize :: CodeToken -> [CodeToken] -> [CodeToken]
+      factorize tok [] = tok:[]
+      factorize tok acc@(a:as) =
+          case (tok, a) of
+            (VarOrFunOrConst x, VarOrFunOrConst y) ->
+                (VarOrFunOrConst (y ++ x)):as
+            (Keyword x, Keyword y) ->
+                (Keyword (y ++ x)):as
+            (Spacing x, Spacing y) ->
+                (Spacing (y ++ x)):as
+            _ -> tok:acc
+
+_ignoreWarnings = (tokenizeCode)
 
 rmCmtsWrapper :: String -> IO [[HighLevelToken]]
 rmCmtsWrapper fileName =
