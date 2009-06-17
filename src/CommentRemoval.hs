@@ -432,13 +432,18 @@ tokenizeCode keywords acc (tok:toks) =
       parseCode code@(c:cs) kwds acc' =
           case startWithList kwds code of
             Just kwd -> -- do we have a keyword?
-                parseCode (consumeTokenUnsafe kwd code) kwds
-                          (factorize (Keyword kwd) acc')
+                let afterKwd = consumeTokenUnsafe kwd code in
+                if afterKwd == [] || spaceOrTabOnly (head afterKwd)
+                then parseCode afterKwd kwds -- yes
+                               (factorize (Keyword kwd) acc')
+                else parseCode cs kwds -- no, even if it begins with one
+                               (factorize (VarOrFunOrConst (c:[])) acc')
             Nothing -> -- do we have some spacing?
                 case takeWhile spaceOrTabOnly code of
                   [] -> -- no, default fallback
-                      parseCode cs kwds
-                                (factorize (VarOrFunOrConst (c:[])) acc')
+                      let name = takeWhile (not . spaceOrTabOnly) code in
+                      parseCode (consumeTokenUnsafe name code) kwds
+                                (factorize (VarOrFunOrConst name) acc')
                   spacing -> -- yes we have some spacing
                       parseCode (consumeTokenUnsafe spacing code) kwds
                                 (factorize (Spacing spacing) acc')
@@ -475,7 +480,7 @@ rmCmtsWrapper fileName =
 
 lowLevelTokenizeWrapper :: String -> IO [[LowLevelToken]]
 lowLevelTokenizeWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName [] [] ["--"] ["\""] ["\\"]
+    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        return lowLevelToks
 
 highLevelTokenizeWrapper :: String -> IO [[HighLevelToken]]
@@ -500,4 +505,7 @@ haskellKeywords = fromWiki ++ fromMe
                  ,"hiding","if","then","else","import","infix","infixl"
                  ,"infixr","instance","let","in","mdo","module","newtype"
                  ,"qualified","type","where"]
-      fromMe = ["(",")","[","]",",","/=","<","<=","==",">",">="]
+      -- the following are special keywords, they can be glued together with
+      -- non keywords, @TODO this can be handled cleanly if we have both
+      -- the current Keyword type and the SpecialKeyword new one
+      fromMe = ["(",")","[","]",",","/=","<","<=","==",">=",".","||","&&","="]
