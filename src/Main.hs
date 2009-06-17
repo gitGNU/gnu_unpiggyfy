@@ -7,14 +7,16 @@ import CommentRemoval (hltToString)
 import CommentRemoval (isOnlyIndentationLine)
 import CommentRemoval (rmCmtsWrapper)
 import CommentRemoval (lowLevelTokenizeWrapper, highLevelTokenizeWrapper)
+import CommentRemoval (tokenizeCodeWrapper)
 
 usage :: IO ()
 usage = (error . concat . (intersperse "\n"))
             ["usage"
-            ," -h | --help"
+            ," -h | --help    -> what you are reading now"
             ," -rc  file-name -> remove comments"
-            ," -llt file-name -> low level tokenization"
-            ," -hlt file-name -> high level tokenization"]
+            ," -llt file-name -> tokenize low level"
+            ," -hlt file-name -> tokenize high level"
+            ," -tc  file-name -> tokenize code only"]
 
 main :: IO ()
 main =
@@ -33,6 +35,9 @@ main =
                      mapM_ putStrLn (map show res)
              else if x == "-hlt"
              then do res <- highLevelTokenizeWrapper (head xs)
+                     mapM_ putStrLn (map show res)
+             else if x == "-tc"
+             then do res <- tokenizeCodeWrapper (head xs)
                      mapM_ putStrLn (map show res)
              else usage
     where
