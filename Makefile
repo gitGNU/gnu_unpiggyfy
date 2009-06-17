@@ -30,7 +30,7 @@ tags:
 	hasktags -e $(SRCS)
 
 clean:
-	rm -f $(BUILD)/*.o $(BUILD)/*.hi $(TMP)/* $(UNPIG)
+	rm -f $(BUILD)/*.o $(BUILD)/*.hi $(TMP)/*.test* $(UNPIG)
 
 help:
 	echo "usage: make [unpig | test | tags | clean | help]"
