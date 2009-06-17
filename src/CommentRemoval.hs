@@ -420,8 +420,11 @@ tokenizeCode :: [HighLevelToken] -> [KeywordStr] -> [[CodeToken]]
 tokenizeCode [] _ acc = (concat . reverse) acc
 tokenizeCode (tok:toks) keywords acc =
     case tok of
-      Code c -> tokenizeCode toks keywords ((parseCode c keywords []):acc)
-      _ -> tokenizeCode toks keywords acc -- ignore non Code token
+      Code c -> tokenizeCode toks keywords
+                             ((parseCode c keywords []):acc)
+      StringInCode s -> tokenizeCode toks keywords
+                                     ([VarOrFunOrConst s]:acc)
+      _ -> tokenizeCode toks keywords acc -- ignore other tokens
     where
       parseCode :: CodeStr -> [KeywordStr] -> [CodeToken] -> [CodeToken]
       parseCode [] _ acc' = reverse acc'
