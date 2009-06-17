@@ -5,6 +5,7 @@ module CommentRemoval (
     rmCmtsWrapper,
     lowLevelTokenizeWrapper,
     highLevelTokenizeWrapper,
+   tokenizeCodeWrapper,
 ) where
 
 import Control.Exception
@@ -415,16 +416,16 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
           _ -> elt':lst
 
 -- HighLevelTokens to CodeTokens, non Code high level tokens disappear
-tokenizeCode :: [HighLevelToken] -> [KeywordStr] -> [[CodeToken]]
+tokenizeCode :: [KeywordStr] -> [[CodeToken]] -> [HighLevelToken]
              -> [CodeToken]
-tokenizeCode [] _ acc = (concat . reverse) acc
-tokenizeCode (tok:toks) keywords acc =
+tokenizeCode _ acc [] = (concat . reverse) acc
+tokenizeCode keywords acc (tok:toks) =
     case tok of
-      Code c -> tokenizeCode toks keywords
-                             ((parseCode c keywords []):acc)
-      StringInCode s -> tokenizeCode toks keywords
-                                     ([VarOrFunOrConst s]:acc)
-      _ -> tokenizeCode toks keywords acc -- ignore other tokens
+      Code c -> tokenizeCode keywords
+                             ((parseCode c keywords []):acc) toks
+      StringInCode s -> tokenizeCode keywords
+                                     ([VarOrFunOrConst s]:acc) toks
+      _ -> tokenizeCode keywords acc toks -- ignore other types
     where
       parseCode :: CodeStr -> [KeywordStr] -> [CodeToken] -> [CodeToken]
       parseCode [] _ acc' = reverse acc'
@@ -453,8 +454,6 @@ tokenizeCode (tok:toks) keywords acc =
           case (tok', a) of
             (VarOrFunOrConst x, VarOrFunOrConst y) ->
                 (VarOrFunOrConst (y ++ x)):as
-            (Keyword x, Keyword y) ->
-                (Keyword (y ++ x)):as
             (Spacing x, Spacing y) ->
                 (Spacing (y ++ x)):as
             _ -> tok':acc'
@@ -484,3 +483,21 @@ highLevelTokenizeWrapper fileName =
     do lowLevelToks <- tokenizeFile fileName [] [] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
        return highLevelToks
+
+tokenizeCodeWrapper :: String -> IO [[CodeToken]]
+tokenizeCodeWrapper fileName =
+    do lowLevelToks <- tokenizeFile fileName [] [] ["--"] ["\""] ["\\"]
+       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
+           codeToks = map (tokenizeCode haskellKeywords []) highLevelToks
+       return codeToks
+
+haskellKeywords :: [String]
+haskellKeywords = fromWiki ++ fromMe
+    where
+      -- reference: http://www.haskell.org/haskellwiki/Keywords
+      fromWiki = ["|","->","<-","@","!","::","_","~","--",">","as","case","of"
+                 ,"class","data","default","deriving","do","forall","foreign"
+                 ,"hiding","if","then","else","import","infix","infixl"
+                 ,"infixr","instance","let","in","mdo","module","newtype"
+                 ,"qualified","type","where"]
+      fromMe = ["(",")","[","]",",","/=","<","<=","==",">",">="]
