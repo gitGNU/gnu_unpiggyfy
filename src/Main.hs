@@ -26,19 +26,22 @@ main =
          [] -> usage
          x:xs ->
              if x == "-rc"
-             then do res <- rmCmtsWrapper (head xs)
+             then do res <- rmCmtsWrapper (enforceFileParam xs)
                      let res' = filter (not . onlyIndentOrNull) res
                          res'' = map (map hltToString) res'
                      mapM_ putStrLn (map concat res'')
              else if x == "-llt"
-             then do res <- lowLevelTokenizeWrapper (head xs)
+             then do res <- lowLevelTokenizeWrapper (enforceFileParam xs)
                      mapM_ putStrLn (map show res)
              else if x == "-hlt"
-             then do res <- highLevelTokenizeWrapper (head xs)
+             then do res <- highLevelTokenizeWrapper (enforceFileParam xs)
                      mapM_ putStrLn (map show res)
              else if x == "-tc"
-             then do res <- tokenizeCodeWrapper (head xs)
+             then do res <- tokenizeCodeWrapper (enforceFileParam xs)
                      mapM_ putStrLn (map show res)
              else usage
     where
       onlyIndentOrNull x = null x || isOnlyIndentationLine x
+
+      enforceFileParam [] = error "no file name given"
+      enforceFileParam (f:fs) = f
