@@ -1,4 +1,8 @@
 @TODO: 2)   tokenize code in {const | keyword | spacing}
+            this part is quite hot, we need to use special keywords
+            for '(' for example, plus we need to sort the keywords by
+            longer before, e.g. || before |. Special keywords must be
+            handled before normal ones.
        2')  write a code compressor (removing all extra spacing/indentation)
        2'') put other languages in tests (C, Java, C++, PHP?), one after the
             other
