@@ -416,34 +416,37 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
           _ -> elt':lst
 
 -- HighLevelTokens to CodeTokens, non Code high level tokens disappear
-tokenizeCode :: [KeywordStr] -> [[CodeToken]] -> [HighLevelToken]
+tokenizeCode :: Bool -> [KeywordStr] -> [[CodeToken]] -> [HighLevelToken]
              -> [CodeToken]
-tokenizeCode _ acc [] = (concat . reverse) acc
-tokenizeCode keywords acc (tok:toks) =
+tokenizeCode _ _ acc [] = (concat . reverse) acc
+tokenizeCode special keywords acc (tok:toks) =
     case tok of
-      Code c -> tokenizeCode keywords
-                             ((parseCode c keywords []):acc) toks
-      StringInCode s -> tokenizeCode keywords
+      Code c -> tokenizeCode special keywords
+                             ((parseCode special c keywords []):acc) toks
+      StringInCode s -> tokenizeCode special keywords
                                      ([VarOrFunOrConst s]:acc) toks
-      _ -> tokenizeCode keywords acc toks -- ignore other types
+      _ -> tokenizeCode special keywords acc toks -- ignore other types
     where
-      parseCode :: CodeStr -> [KeywordStr] -> [CodeToken] -> [CodeToken]
-      parseCode [] _ acc' = reverse acc'
-      parseCode code kwds acc' =
+      parseCode :: Bool -> CodeStr -> [KeywordStr] -> [CodeToken]
+                -> [CodeToken]
+      parseCode _ [] _ acc' = reverse acc'
+      parseCode special' code kwds acc' =
           case startWithList kwds code of
             Just kwd -> -- do we have a keyword?
                 let afterKwd = consumeTokenUnsafe kwd code in
-                parseCode afterKwd kwds -- yes
+                parseCode special' afterKwd kwds -- yes
                           (factorize (Keyword kwd) acc')
             Nothing -> -- do we have some spacing?
                 case takeWhile spaceOrTabOnly code of
                   [] -> -- no, default fallback
-                      let name  = takeWhile (not . spaceOrTabOnly) code
-                          name' = untilNextKeyword name kwds [] in
-                      parseCode (consumeTokenUnsafe name' code) kwds
-                                (factorize (VarOrFunOrConst name') acc')
+                      let name = takeWhile (not . spaceOrTabOnly) code
+                          name' = (if special'
+                                   then untilNextKeyword name kwds []
+                                   else name) in
+                      parseCode special' (consumeTokenUnsafe name' code)
+                                kwds (factorize (VarOrFunOrConst name') acc')
                   spacing -> -- yes we have some spacing
-                      parseCode (consumeTokenUnsafe spacing code) kwds
+                      parseCode special' (consumeTokenUnsafe spacing code) kwds
                                 (factorize (Spacing spacing) acc')
 
       spaceOrTabOnly :: Char -> Bool
@@ -498,7 +501,8 @@ tokenizeCodeWrapper :: String -> IO [[CodeToken]]
 tokenizeCodeWrapper fileName =
     do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
-           codeToks = map (tokenizeCode haskellLowKeywords []) highLevelToks
+           codeToks = map (tokenizeCode True haskellLowKeywords [])
+                          highLevelToks
        return codeToks
 
 -- the following are special keywords, they can be glued together with
@@ -510,7 +514,6 @@ haskellLowKeywords =
     (reverse . sort)
     ["(",")","[","]",",","/=","<","<=","==",">",">=","."
     ,"||","|","&&","&","=","!","@","::",":","~"]
-
 
 -- haskellHighKeywords :: [String]
 -- haskellHighKeywords =
