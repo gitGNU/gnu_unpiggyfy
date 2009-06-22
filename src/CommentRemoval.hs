@@ -429,21 +429,19 @@ tokenizeCode keywords acc (tok:toks) =
     where
       parseCode :: CodeStr -> [KeywordStr] -> [CodeToken] -> [CodeToken]
       parseCode [] _ acc' = reverse acc'
-      parseCode code@(c:cs) kwds acc' =
+      parseCode code kwds acc' =
           case startWithList kwds code of
             Just kwd -> -- do we have a keyword?
                 let afterKwd = consumeTokenUnsafe kwd code in
-                if afterKwd == [] || spaceOrTabOnly (head afterKwd)
-                then parseCode afterKwd kwds -- yes
-                               (factorize (Keyword kwd) acc')
-                else parseCode cs kwds -- no, even if it begins with one
-                               (factorize (VarOrFunOrConst (c:[])) acc')
+                parseCode afterKwd kwds -- yes
+                          (factorize (Keyword kwd) acc')
             Nothing -> -- do we have some spacing?
                 case takeWhile spaceOrTabOnly code of
                   [] -> -- no, default fallback
-                      let name = takeWhile (not . spaceOrTabOnly) code in
-                      parseCode (consumeTokenUnsafe name code) kwds
-                                (factorize (VarOrFunOrConst name) acc')
+                      let name  = takeWhile (not . spaceOrTabOnly) code
+                          name' = untilNextKeyword name kwds [] in
+                      parseCode (consumeTokenUnsafe name' code) kwds
+                                (factorize (VarOrFunOrConst name') acc')
                   spacing -> -- yes we have some spacing
                       parseCode (consumeTokenUnsafe spacing code) kwds
                                 (factorize (Spacing spacing) acc')
@@ -452,6 +450,13 @@ tokenizeCode keywords acc (tok:toks) =
       spaceOrTabOnly ' '  = True
       spaceOrTabOnly '\t' = True
       spaceOrTabOnly _    = False
+
+      untilNextKeyword :: CodeStr -> [KeywordStr] -> CodeStr -> CodeStr
+      untilNextKeyword [] _ acc' = reverse acc'
+      untilNextKeyword code@(c:cs) kwds acc' =
+          case startWithList kwds code of
+            Just _ -> untilNextKeyword [] kwds acc'
+            Nothing -> untilNextKeyword cs kwds (c:acc')
 
       factorize :: CodeToken -> [CodeToken] -> [CodeToken]
       factorize tok' [] = tok':[]
@@ -493,21 +498,25 @@ tokenizeCodeWrapper :: String -> IO [[CodeToken]]
 tokenizeCodeWrapper fileName =
     do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
-           codeToks = map (tokenizeCode haskellKeywords []) highLevelToks
+           codeToks = map (tokenizeCode haskellLowKeywords []) highLevelToks
        return codeToks
 
-haskellKeywords :: [String]
-haskellKeywords = fromWiki ++ fromMe
-    where
-      -- reference: http://www.haskell.org/haskellwiki/Keywords
-      fromWiki = (reverse . sort) ["->","<-","_","--","as","case","of"
-                 ,"class","data","default","deriving","do","forall","foreign"
-                 ,"hiding","if","then","else","import","infix","infixl"
-                 ,"infixr","instance","let","in","mdo","module","newtype"
-                 ,"qualified","type","where"]
-      -- the following are special keywords, they can be glued together with
-      -- non keywords, @TODO this can be handled cleanly if we have both
-      -- the current Keyword type and the SpecialKeyword new one
-      fromMe = (reverse . sort) ["(",")","[","]",",","/=","<","<=","=="
-                                ,">",">=",".","||","|","&&","&","=","!","@"
-                                ,"::",":","~"]
+-- the following are special keywords, they can be glued together with
+-- non keywords, @TODO this can be handled cleanly if we have both
+-- the current Keyword type and the SpecialKeyword new one
+-- reference: http://www.haskell.org/haskellwiki/Keywords
+haskellLowKeywords :: [String]
+haskellLowKeywords =
+    (reverse . sort)
+    ["(",")","[","]",",","/=","<","<=","==",">",">=","."
+    ,"||","|","&&","&","=","!","@","::",":","~"]
+
+
+-- haskellHighKeywords :: [String]
+-- haskellHighKeywords =
+--     (reverse . sort)
+--     ["->","<-","_","--","as","case","of"
+--     ,"class","data","default","deriving","do","forall","foreign"
+--     ,"hiding","if","then","else","import","infix","infixl"
+--     ,"infixr","instance","let","in","mdo","module","newtype"
+--     ,"qualified","type","where"]
