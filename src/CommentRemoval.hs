@@ -465,7 +465,7 @@ tokenizeCode keywords acc (tok:toks) =
 
 rmCmtsWrapper :: String -> IO [[HighLevelToken]]
 rmCmtsWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName [] [] ["--"] ["\""] ["\\"]
+    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
            codeOnly = removeComments highLevelToks
        return codeOnly
@@ -485,13 +485,13 @@ lowLevelTokenizeWrapper fileName =
 
 highLevelTokenizeWrapper :: String -> IO [[HighLevelToken]]
 highLevelTokenizeWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName [] [] ["--"] ["\""] ["\\"]
+    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
        return highLevelToks
 
 tokenizeCodeWrapper :: String -> IO [[CodeToken]]
 tokenizeCodeWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName [] [] ["--"] ["\""] ["\\"]
+    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
            codeToks = map (tokenizeCode haskellKeywords []) highLevelToks
        return codeToks
@@ -500,7 +500,7 @@ haskellKeywords :: [String]
 haskellKeywords = fromWiki ++ fromMe
     where
       -- reference: http://www.haskell.org/haskellwiki/Keywords
-      fromWiki = ["|","->","<-","@","!","::","_","~","--",">","as","case","of"
+      fromWiki = (reverse . sort) ["->","<-","_","--","as","case","of"
                  ,"class","data","default","deriving","do","forall","foreign"
                  ,"hiding","if","then","else","import","infix","infixl"
                  ,"infixr","instance","let","in","mdo","module","newtype"
@@ -508,4 +508,6 @@ haskellKeywords = fromWiki ++ fromMe
       -- the following are special keywords, they can be glued together with
       -- non keywords, @TODO this can be handled cleanly if we have both
       -- the current Keyword type and the SpecialKeyword new one
-      fromMe = ["(",")","[","]",",","/=","<","<=","==",">=",".","||","&&","="]
+      fromMe = (reverse . sort) ["(",")","[","]",",","/=","<","<=","=="
+                                ,">",">=",".","||","|","&&","&","=","!","@"
+                                ,"::",":","~"]
