@@ -44,4 +44,4 @@ main =
       onlyIndentOrNull x = null x || isOnlyIndentationLine x
 
       enforceFileParam [] = error "no file name given"
-      enforceFileParam (f:fs) = f
+      enforceFileParam (f:_) = f
