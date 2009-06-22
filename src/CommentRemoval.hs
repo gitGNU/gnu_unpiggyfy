@@ -416,37 +416,38 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
           _ -> elt':lst
 
 -- HighLevelTokens to CodeTokens, non Code high level tokens disappear
-tokenizeCode :: Bool -> [KeywordStr] -> [[CodeToken]] -> [HighLevelToken]
-             -> [CodeToken]
-tokenizeCode _ _ acc [] = (concat . reverse) acc
-tokenizeCode special keywords acc (tok:toks) =
+tokenizeCodeLowLevel :: [KeywordStr] -> [KeywordStr] -> [[CodeToken]]
+                     -> [HighLevelToken] -> [CodeToken]
+tokenizeCodeLowLevel _ _ acc [] = (concat . reverse) acc
+tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
     case tok of
-      Code c -> tokenizeCode special keywords
-                             ((parseCode special c keywords []):acc) toks
-      StringInCode s -> tokenizeCode special keywords
-                                     ([VarOrFunOrConst s]:acc) toks
-      _ -> tokenizeCode special keywords acc toks -- ignore other types
+      Code c -> tokenizeCodeLowLevel lowKwds highKwds
+                                     ((parseCode c []):acc)
+                                     toks
+      StringInCode s -> tokenizeCodeLowLevel lowKwds highKwds
+                                             ([VarOrFunOrConst s]:acc) toks
+      _ -> tokenizeCodeLowLevel lowKwds highKwds acc toks -- ignore other types
     where
-      parseCode :: Bool -> CodeStr -> [KeywordStr] -> [CodeToken]
-                -> [CodeToken]
-      parseCode _ [] _ acc' = reverse acc'
-      parseCode special' code kwds acc' =
-          case startWithList kwds code of
+      parseCode :: CodeStr -> [CodeToken] -> [CodeToken]
+      parseCode [] acc' = reverse acc'
+      parseCode code acc' =
+          case startWithList lowKwds code of
             Just kwd -> -- do we have a keyword?
                 let afterKwd = consumeTokenUnsafe kwd code in
-                parseCode special' afterKwd kwds -- yes
+                parseCode afterKwd -- yes
                           (factorize (Keyword kwd) acc')
             Nothing -> -- do we have some spacing?
                 case takeWhile spaceOrTabOnly code of
                   [] -> -- no, default fallback
                       let name = takeWhile (not . spaceOrTabOnly) code
-                          name' = (if special'
-                                   then untilNextKeyword name kwds []
-                                   else name) in
-                      parseCode special' (consumeTokenUnsafe name' code)
-                                kwds (factorize (VarOrFunOrConst name') acc')
+                          name' = untilNextKeyword name lowKwds []
+                          name'' = if elem name' highKwds
+                                   then Keyword name'
+                                   else VarOrFunOrConst name' in
+                      parseCode (consumeTokenUnsafe name' code)
+                                (factorize name'' acc')
                   spacing -> -- yes we have some spacing
-                      parseCode special' (consumeTokenUnsafe spacing code) kwds
+                      parseCode (consumeTokenUnsafe spacing code)
                                 (factorize (Spacing spacing) acc')
 
       spaceOrTabOnly :: Char -> Bool
@@ -499,11 +500,20 @@ highLevelTokenizeWrapper fileName =
 
 tokenizeCodeWrapper :: String -> IO [[CodeToken]]
 tokenizeCodeWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
+    do checkKwds haskellLowKeywords haskellHighKeywords
+       lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
-           codeToks = map (tokenizeCode True haskellLowKeywords [])
+           codeToks = map (tokenizeCodeLowLevel haskellLowKeywords
+                                                haskellHighKeywords [])
                           highLevelToks
        return codeToks
+    where
+      checkKwds l1 l2 =
+          let collisions = intersect l1 l2 in
+          if collisions /= []
+          then error ("collision in low and high level keywords: " ++
+                     (show collisions))
+          else return ()
 
 -- the following are special keywords, they can be glued together with
 -- non keywords, @TODO this can be handled cleanly if we have both
@@ -513,13 +523,13 @@ haskellLowKeywords :: [String]
 haskellLowKeywords =
     (reverse . sort)
     ["(",")","[","]",",","/=","<","<=","==",">",">=","."
-    ,"||","|","&&","&","=","!","@","::",":","~"]
+    ,"||","|","&&","&","=","!","@","::",":","~","<-","->"]
 
--- haskellHighKeywords :: [String]
--- haskellHighKeywords =
---     (reverse . sort)
---     ["->","<-","_","--","as","case","of"
---     ,"class","data","default","deriving","do","forall","foreign"
---     ,"hiding","if","then","else","import","infix","infixl"
---     ,"infixr","instance","let","in","mdo","module","newtype"
---     ,"qualified","type","where"]
+haskellHighKeywords :: [String]
+haskellHighKeywords =
+    (reverse . sort)
+    ["_","--","as","case","of"
+    ,"class","data","default","deriving","do","forall","foreign"
+    ,"hiding","if","then","else","import","infix","infixl"
+    ,"infixr","instance","let","in","mdo","module","newtype"
+    ,"qualified","type","where"]
