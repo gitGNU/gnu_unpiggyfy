@@ -8,6 +8,7 @@ import CommentRemoval (isOnlyIndentationLine)
 import CommentRemoval (rmCmtsWrapper)
 import CommentRemoval (lowLevelTokenizeWrapper, highLevelTokenizeWrapper)
 import CommentRemoval (tokenizeCodeWrapper)
+import CommentRemoval (compressCodeWrapper)
 
 usage :: IO ()
 usage = (error . concat . (intersperse "\n"))
@@ -16,7 +17,8 @@ usage = (error . concat . (intersperse "\n"))
             ," -rc  file-name -> remove comments"
             ," -llt file-name -> tokenize low level"
             ," -hlt file-name -> tokenize high level"
-            ," -tc  file-name -> tokenize code only"]
+            ," -tc  file-name -> tokenize code only"
+            ," -cc  file-name -> compress code"]
 
 main :: IO ()
 main =
@@ -39,6 +41,9 @@ main =
              else if x == "-tc"
              then do res <- tokenizeCodeWrapper (enforceFileParam xs)
                      mapM_ putStrLn (map show res)
+             else if x == "-cc"
+             then do res <- compressCodeWrapper (enforceFileParam xs)
+                     mapM_ putStrLn res
              else usage
     where
       onlyIndentOrNull x = null x || isOnlyIndentationLine x
