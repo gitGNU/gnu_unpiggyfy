@@ -6,6 +6,7 @@ module CommentRemoval (
     lowLevelTokenizeWrapper,
     highLevelTokenizeWrapper,
     tokenizeCodeWrapper,
+    compressCodeWrapper,
 ) where
 
 import Control.Exception
@@ -74,6 +75,11 @@ hltToString (LongCmt          s) = s
 hltToString (StringInCode     s) = s
 hltToString (StringInShortCmt s) = s
 hltToString (StringInLongCmt  s) = s
+
+ctToString :: CodeToken -> String
+ctToString (VarOrFunOrConst s) = s
+ctToString (Keyword s)         = s
+ctToString (Spacing s)         = s
 
 isOnlyIndentationLine :: [HighLevelToken] -> Bool
 isOnlyIndentationLine [] = False
@@ -502,18 +508,44 @@ tokenizeCodeWrapper fileName =
                                                 haskellHighKeywords [])
                           highLevelToks
        return codeToks
+
+checkKwds :: (Eq a, Show a, Monad m) => [a] -> [a] -> m ()
+checkKwds l1 l2 =
+    let collisions = intersect l1 l2 in
+    if collisions /= []
+    then error ("collision in low and high level keywords: " ++
+               (show collisions))
+    else return ()
+
+compressCodeWrapper :: String -> IO [String]
+compressCodeWrapper fileName =
+    do checkKwds haskellLowKeywords haskellHighKeywords
+       lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
+       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
+           codeToks = map ((compress []) .
+                           (tokenizeCodeLowLevel haskellLowKeywords
+                                                 haskellHighKeywords []))
+                          highLevelToks
+           codeToks' = map (concat . (map ctToString)) codeToks
+       return codeToks'
     where
-      checkKwds l1 l2 =
-          let collisions = intersect l1 l2 in
-          if collisions /= []
-          then error ("collision in low and high level keywords: " ++
-                     (show collisions))
-          else return ()
+      -- consecutive spaces become only one
+      compress :: [CodeToken] -> [CodeToken] -> [CodeToken]
+      compress acc [] = reverse acc
+      compress acc (c:cs) =
+          case acc of
+            [] -> case c of
+                    Spacing _ -> compress [Spacing " "] cs
+                    _ -> compress [c] cs
+            (c':_) -> case c of
+                        Spacing _ -> case c' of
+                                       Spacing _ -> compress acc cs
+                                       _ -> compress (c:acc) cs
+                        _ -> compress (c:acc) cs
 
 -- the following are special keywords, they can be glued together with
 -- non keywords, @TODO this can be handled cleanly if we have both
 -- the current Keyword type and the SpecialKeyword new one
--- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellLowKeywords :: [String]
 haskellLowKeywords =
     (reverse . uniq)
@@ -521,6 +553,7 @@ haskellLowKeywords =
     ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
     ,"+","++","*","**","-","^","^^"]
 
+-- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellHighKeywords :: [String]
 haskellHighKeywords =
     (reverse . uniq)
