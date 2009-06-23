@@ -538,4 +538,4 @@ uniq l = uniq' (sort l) []
           uniq' (x:xs) acc = case xs of
                                [] -> uniq' xs (x:acc)
                                (x':_) | x == x' -> uniq' xs acc
-                                        | otherwise -> uniq' xs (x:acc)
+                                      | otherwise -> uniq' xs (x:acc)
