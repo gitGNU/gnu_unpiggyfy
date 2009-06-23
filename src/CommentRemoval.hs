@@ -522,26 +522,31 @@ compressCodeWrapper fileName =
     do checkKwds haskellLowKeywords haskellHighKeywords
        lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
-           codeToks = map ((compress []) .
+           codeToks = map ((compress True []) .
                            (tokenizeCodeLowLevel haskellLowKeywords
                                                  haskellHighKeywords []))
                           highLevelToks
            codeToks' = map (concat . (map ctToString)) codeToks
        return codeToks'
     where
-      -- consecutive spaces become only one
-      compress :: [CodeToken] -> [CodeToken] -> [CodeToken]
-      compress acc [] = reverse acc
-      compress acc (c:cs) =
-          case acc of
-            [] -> case c of
-                    Spacing _ -> compress [Spacing " "] cs
-                    _ -> compress [c] cs
-            (c':_) -> case c of
-                        Spacing _ -> case c' of
-                                       Spacing _ -> compress acc cs
-                                       _ -> compress (c:acc) cs
-                        _ -> compress (c:acc) cs
+      -- consecutive spaces become only one, preserve left margin indentation
+      compress :: Bool -> [CodeToken] -> [CodeToken] -> [CodeToken]
+      compress _ acc [] = reverse acc
+      compress skip acc (c:cs)
+          | skip = case c of
+                     Spacing _ -> compress skip (c:acc) cs
+                     _ -> compress False (c:acc) cs
+          | otherwise =
+              case acc of
+                [] -> case c of
+                        Spacing _ -> compress skip [Spacing " "] cs
+                        _ -> compress skip [c] cs
+                (c':_) -> case c of
+                            Spacing _ -> case c' of
+                                           Spacing _ -> compress skip acc cs
+                                           _ -> compress skip
+                                                         ((Spacing " "):acc) cs
+                            _ -> compress skip (c:acc) cs
 
 -- the following are special keywords, they can be glued together with
 -- non keywords, @TODO this can be handled cleanly if we have both
