@@ -45,6 +45,26 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+test="CODE TOKENIZATION"
+test_04_in=data/CommentRemoval.test_input
+test_04_out=tmp/CommentRemoval.test_04_output
+test_04_ref=data/CommentRemoval.test_04_reference
+test_04_diff=tmp/CommentRemoval.test_diff
+
+echo "testing "$test"..."
+
+bin/unpig -tc $test_04_in > $test_04_out
+diff $test_04_out $test_04_ref > $test_04_diff
+
+if [ `wc -c $test_04_diff | awk '{print $1}'` -ne 0 ] ; then
+    echo "###"$test" ERRORS:"
+    cat tmp/CommentRemoval.test_diff
+    exit 1
+else
+    echo "OK"
+fi
+
+# -----------------------------------------------------------------------------
 test="REMOVING COMMENTS"
 test_03_in=data/CommentRemoval.test_input
 test_03_out=tmp/CommentRemoval.test_03_output
