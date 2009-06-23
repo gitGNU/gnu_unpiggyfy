@@ -516,15 +516,26 @@ tokenizeCodeWrapper fileName =
 -- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellLowKeywords :: [String]
 haskellLowKeywords =
-    (reverse . sort)
-    ["(",")","[","]",",","/=","<","<=","==",">",">=","."
-    ,"||","|","&&","&","=","!","@","::",":","~","<-","->"]
+    (reverse . uniq)
+    ["_","(",")","[","]",",","/=","<","<=","==",">",">=","."
+    ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
+    ,"+","++","*","**","-","^","^^"]
 
 haskellHighKeywords :: [String]
 haskellHighKeywords =
-    (reverse . sort)
-    ["_","--","as","case","of"
+    (reverse . uniq)
+    ["as","case","of"
     ,"class","data","default","deriving","do","forall","foreign"
     ,"hiding","if","then","else","import","infix","infixl"
     ,"infixr","instance","let","in","mdo","module","newtype"
     ,"qualified","type","where"]
+
+-- remove duplicates
+uniq :: Ord a => [a] -> [a]
+uniq l = uniq' (sort l) []
+    where uniq' :: Ord a => [a] -> [a] -> [a]
+          uniq' []     acc = reverse acc
+          uniq' (x:xs) acc = case xs of
+                               [] -> uniq' xs (x:acc)
+                               (x':_) | x == x' -> uniq' xs acc
+                                        | otherwise -> uniq' xs (x:acc)
