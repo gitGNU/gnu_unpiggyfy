@@ -5,7 +5,7 @@ module CommentRemoval (
     rmCmtsWrapper,
     lowLevelTokenizeWrapper,
     highLevelTokenizeWrapper,
-   tokenizeCodeWrapper,
+    tokenizeCodeWrapper,
 ) where
 
 import Control.Exception
@@ -437,9 +437,9 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
                 parseCode afterKwd -- yes
                           (factorize (Keyword kwd) acc')
             Nothing -> -- do we have some spacing?
-                case takeWhile spaceOrTabOnly code of
+                case takeWhile isSpace code of
                   [] -> -- no, default fallback
-                      let name = takeWhile (not . spaceOrTabOnly) code
+                      let name = takeWhile (not . isSpace) code
                           name' = untilNextKeyword name lowKwds []
                           name'' = if elem name' highKwds
                                    then Keyword name'
@@ -449,11 +449,6 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
                   spacing -> -- yes we have some spacing
                       parseCode (consumeTokenUnsafe spacing code)
                                 (factorize (Spacing spacing) acc')
-
-      spaceOrTabOnly :: Char -> Bool
-      spaceOrTabOnly ' '  = True
-      spaceOrTabOnly '\t' = True
-      spaceOrTabOnly _    = False
 
       untilNextKeyword :: CodeStr -> [KeywordStr] -> CodeStr -> CodeStr
       untilNextKeyword [] _ acc' = reverse acc'
