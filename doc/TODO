@@ -1,5 +1,6 @@
 @TODO: 2')  write a code compressor (removing all extra spacing/indentation)
             * compress more around special keywords
+            * keep comments
        2'') put other languages in tests (C, Java, C++, PHP?), one after the
             other
        3)   extract inter line indentation rules
