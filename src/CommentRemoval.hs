@@ -118,9 +118,11 @@ promote ReadingEscCharInStringInShortCmt           x  = StringInShortCmt
                                                           (lltToString x)
 promote ReadingEscCharInStringInLongCmt            x  = StringInLongCmt
                                                           (lltToString x)
+promote ReadingStringInCode     (LineCmtMark       x) = StringInCode     x
+promote ReadingStringInCode     (CmtBegin          x) = StringInCode     x
+promote ReadingStringInCode     (CmtEnd            x) = StringInCode     x
 promote _                       (CmtBegin          x) = LongCmt          x
 promote _                       (CmtEnd            x) = LongCmt          x
-promote ReadingStringInCode     (LineCmtMark       x) = StringInCode     x
 promote _                       (LineCmtMark       x) = ShortCmt         x
 
 startWithList :: [String] -> String -> Maybe String
