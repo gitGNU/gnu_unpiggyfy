@@ -1,6 +1,6 @@
 @TODO: 2')  write a code compressor (removing all extra spacing/indentation)
-            * compress more around special keywords if it still compiles after
             * bug with -cc and "" in a short comment of the source file
+            * compress more around special keywords if it still compiles after
        2'') put other languages in tests (C, Java, C++, PHP?), one after the
             other
        3)   extract inter line indentation rules
