@@ -17,7 +17,7 @@ bin/unpig -llt $test_01_in > $test_01_out
 diff $test_01_out $test_01_ref > $test_01_diff
 
 if [ `wc -c $test_01_diff | awk '{print $1}'` -ne 0 ] ; then
-    echo "###"$test" ERRORS:"
+    echo "###"$test" ERRORS in diff "$test_01_out" "$test_01_ref
     cat tmp/CommentRemoval.test_diff
     exit 1
 else
@@ -37,7 +37,7 @@ bin/unpig -hlt $test_02_in > $test_02_out
 diff $test_02_out $test_02_ref > $test_02_diff
 
 if [ `wc -c $test_02_diff | awk '{print $1}'` -ne 0 ] ; then
-    echo "###"$test" ERRORS:"
+    echo "###"$test" ERRORS in diff "$test_02_out" "$test_02_ref
     cat tmp/CommentRemoval.test_diff
     exit 1
 else
@@ -57,7 +57,7 @@ bin/unpig -tc $test_04_in > $test_04_out
 diff $test_04_out $test_04_ref > $test_04_diff
 
 if [ `wc -c $test_04_diff | awk '{print $1}'` -ne 0 ] ; then
-    echo "###"$test" ERRORS:"
+    echo "###"$test" ERRORS in diff "$test_04_out" "$test_04_ref
     cat tmp/CommentRemoval.test_diff
     exit 1
 else
@@ -77,7 +77,7 @@ bin/unpig -rc $test_03_in > $test_03_out
 diff $test_03_out $test_03_ref > $test_03_diff
 
 if [ `wc -c $test_03_diff | awk '{print $1}'` -ne 0 ] ; then
-    echo "###"$test" ERRORS:"
+    echo "###"$test" ERRORS in diff "$test_03_out" "$test_03_ref
     cat tmp/CommentRemoval.test_diff
     exit 1
 else
