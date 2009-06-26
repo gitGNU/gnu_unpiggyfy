@@ -545,25 +545,28 @@ compressCodeWrapper fileName =
       -- consecutive spaces become only one, preserves left margin indentation
       compress :: Bool -> [CodeToken] -> [CodeToken] -> [CodeToken]
       compress _ acc [] = reverse acc
-      compress skip acc (c:cs)
-          | skip = case c of
-                     Spacing _ -> compress skip (c:acc) cs
-                     _ -> compress False (c:acc) cs
-          | otherwise =
-              case acc of
-                [] -> case c of
-                        Spacing _ -> compress skip [Spacing " "] cs
-                        _ -> compress skip [c] cs
-                (c':_) -> case c of
-                            Spacing _ -> case c' of
-                                           Spacing _ -> compress skip acc cs
-                                           _ -> compress skip
-                                                         ((Spacing " "):acc) cs
-                            _ -> compress skip (c:acc) cs
+      -- skipping left margin indentation
+      compress skip@(True) acc (c:cs) =
+          case c of
+            Spacing _ -> compress skip (c:acc) cs
+            _ -> compress False (c:acc) cs
+      -- no more skipping
+      compress False acc lst = compress False ((rmConsSpacing lst []) ++ acc) []
+
+      rmConsSpacing [] acc = acc
+      rmConsSpacing (x:xs) acc =
+          case x of
+            Spacing _ -> case xs of
+                           [] -> rmConsSpacing [] ((Spacing " "):acc)
+                           (x':xs') -> case x' of
+                                         Spacing _ -> rmConsSpacing xs' acc
+                                         _ -> rmConsSpacing xs
+                                                            ((Spacing " "):acc)
+            _ -> rmConsSpacing xs (x:acc)
 
 -- the following are special keywords, they can be glued together with
--- non keywords, @TODO this can be handled cleanly if we have both
--- the current Keyword type and the SpecialKeyword new one
+-- non keywords
+-- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellLowKeywords :: [String]
 haskellLowKeywords =
     (reverse . uniq)
@@ -571,7 +574,6 @@ haskellLowKeywords =
     ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
     ,"+","++","*","**","-","^","^^"]
 
--- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellHighKeywords :: [String]
 haskellHighKeywords =
     (reverse . uniq)
