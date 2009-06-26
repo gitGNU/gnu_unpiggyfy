@@ -42,10 +42,12 @@ data HighLevelToken = Code             CodeStr
 
 type VarOrFunOrConstStr = String
 type KeywordStr         = String
+type SpecKeywordStr     = String
 type SpacingChar        = String
 
 data CodeToken = VarOrFunOrConst VarOrFunOrConstStr
                | Keyword         KeywordStr
+               | SpecialKeyword  SpecKeywordStr
                | Spacing         SpacingChar
                | ShortComment    ShortCmtStr
                | LongComment     LongCmtStr
@@ -81,6 +83,7 @@ hltToString (StringInLongCmt  s) = s
 ctToString :: CodeToken -> String
 ctToString (VarOrFunOrConst s) = s
 ctToString (Keyword s)         = s
+ctToString (SpecialKeyword s)  = s
 ctToString (Spacing s)         = s
 ctToString (ShortComment s)    = s
 ctToString (LongComment s)     = s
@@ -451,7 +454,7 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
             Just kwd -> -- do we have a keyword?
                 let afterKwd = consumeTokenUnsafe kwd code in
                 parseCode afterKwd -- yes
-                          (factorize (Keyword kwd) acc')
+                          (factorize (SpecialKeyword kwd) acc')
             Nothing -> -- do we have some spacing?
                 case takeWhile isSpace code of
                   [] -> -- no, default fallback
