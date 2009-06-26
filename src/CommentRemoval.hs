@@ -47,6 +47,8 @@ type SpacingChar        = String
 data CodeToken = VarOrFunOrConst VarOrFunOrConstStr
                | Keyword         KeywordStr
                | Spacing         SpacingChar
+               | ShortComment    ShortCmtStr
+               | LongComment     LongCmtStr
                deriving Show
 
 data ParserState = ReadingCode
@@ -80,6 +82,8 @@ ctToString :: CodeToken -> String
 ctToString (VarOrFunOrConst s) = s
 ctToString (Keyword s)         = s
 ctToString (Spacing s)         = s
+ctToString (ShortComment s)    = s
+ctToString (LongComment s)     = s
 
 isOnlyIndentationLine :: [HighLevelToken] -> Bool
 isOnlyIndentationLine [] = False
@@ -434,6 +438,10 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
                                      toks
       StringInCode s -> tokenizeCodeLowLevel lowKwds highKwds
                                              ([VarOrFunOrConst s]:acc) toks
+      ShortCmt sc -> tokenizeCodeLowLevel lowKwds highKwds
+                                          ([ShortComment sc]:acc) toks
+      LongCmt sc -> tokenizeCodeLowLevel lowKwds highKwds
+                                         ([LongComment sc]:acc) toks
       _ -> tokenizeCodeLowLevel lowKwds highKwds acc toks -- ignore other types
     where
       parseCode :: CodeStr -> [CodeToken] -> [CodeToken]
@@ -531,7 +539,7 @@ compressCodeWrapper fileName =
            codeToks' = map (concat . (map ctToString)) codeToks
        return codeToks'
     where
-      -- consecutive spaces become only one, preserve left margin indentation
+      -- consecutive spaces become only one, preserves left margin indentation
       compress :: Bool -> [CodeToken] -> [CodeToken] -> [CodeToken]
       compress _ acc [] = reverse acc
       compress skip acc (c:cs)
