@@ -276,7 +276,7 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                   highLevelTokens others parserState
                                   depth [] ((reverse lineAcc):acc)
       -- continuing current line
-      (tok:toks) ->
+      tok:toks ->
           case parserState of
             ReadingCode ->
                 case tok of
@@ -546,23 +546,33 @@ compressCodeWrapper fileName =
       compress :: Bool -> [CodeToken] -> [CodeToken] -> [CodeToken]
       compress _ acc [] = reverse acc
       -- skipping left margin indentation
-      compress skip@(True) acc (c:cs) =
+      compress skip@(True) acc lst@(c:cs) =
           case c of
             Spacing _ -> compress skip (c:acc) cs
-            _ -> compress False (c:acc) cs
+            _ -> compress False acc lst
       -- no more skipping
-      compress False acc lst = compress False ((rmConsSpacing lst []) ++ acc) []
+      compress False acc lst =
+          compress False ((rmConsSpacing' lst []) ++ acc) []
 
-      rmConsSpacing [] acc = acc
-      rmConsSpacing (x:xs) acc =
+      rmConsSpacing' [] acc = acc
+      rmConsSpacing' (x:xs) acc =
           case x of
             Spacing _ -> case xs of
-                           [] -> rmConsSpacing [] ((Spacing " "):acc)
-                           (x':xs') -> case x' of
-                                         Spacing _ -> rmConsSpacing xs' acc
-                                         _ -> rmConsSpacing xs
-                                                            ((Spacing " "):acc)
-            _ -> rmConsSpacing xs (x:acc)
+                           [] -> rmConsSpacing' [] acc
+                           x':_ -> case x' of
+                                     Spacing _ ->
+                                         rmConsSpacing' xs acc
+                                     SpecialKeyword _ ->
+                                         rmConsSpacing' xs acc
+                                     _ -> rmConsSpacing' xs
+                                                         ((Spacing " "):acc)
+            SpecialKeyword _ -> case xs of
+                                  [] -> rmConsSpacing' [] (x:acc)
+                                  x':xs' -> case x' of
+                                              Spacing _ ->
+                                                  rmConsSpacing' (x:xs') acc
+                                              _ -> rmConsSpacing' xs (x:acc)
+            _ -> rmConsSpacing' xs (x:acc)
 
 -- the following are special keywords, they can be glued together with
 -- non keywords
