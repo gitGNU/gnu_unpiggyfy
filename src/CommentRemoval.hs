@@ -7,6 +7,8 @@ module CommentRemoval (
     highLevelTokenizeWrapper,
     tokenizeCodeWrapper,
     compressCodeWrapper,
+    weakCompress,
+    strongCompress,
 ) where
 
 import Control.Exception
@@ -514,11 +516,11 @@ highLevelTokenizeWrapper fileName =
 
 tokenizeCodeWrapper :: String -> IO [[CodeToken]]
 tokenizeCodeWrapper fileName =
-    do checkKwds haskellLowKeywords haskellHighKeywords
+    do checkKwds haskellSpecialKwds haskellStandardKwds
        lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
-           codeToks = map (tokenizeCodeLowLevel haskellLowKeywords
-                                                haskellHighKeywords [])
+           codeToks = map (tokenizeCodeLowLevel haskellSpecialKwds
+                                                haskellStandardKwds [])
                           highLevelToks
        return codeToks
 
@@ -530,14 +532,15 @@ checkKwds l1 l2 =
                (show collisions))
     else return ()
 
-compressCodeWrapper :: String -> IO [String]
-compressCodeWrapper fileName =
-    do checkKwds haskellLowKeywords haskellHighKeywords
+compressCodeWrapper :: String -> ([CodeToken] -> [CodeToken] -> [CodeToken])
+                    -> IO [String]
+compressCodeWrapper fileName compressor =
+    do checkKwds haskellSpecialKwds haskellStandardKwds
        lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
            codeToks = map ((compress True []) .
-                           (tokenizeCodeLowLevel haskellLowKeywords
-                                                 haskellHighKeywords []))
+                           (tokenizeCodeLowLevel haskellSpecialKwds
+                                                 haskellStandardKwds []))
                           highLevelToks
            codeToks' = map (concat . (map ctToString)) codeToks
        return codeToks'
@@ -552,40 +555,56 @@ compressCodeWrapper fileName =
             _ -> compress False acc lst
       -- no more skipping
       compress False acc lst =
-          compress False ((rmConsSpacing' lst []) ++ acc) []
+          compress False ((compressor lst []) ++ acc) []
 
-      rmConsSpacing' [] acc = acc
-      rmConsSpacing' (x:xs) acc =
-          case x of
-            Spacing _ -> case xs of
-                           [] -> rmConsSpacing' [] acc
-                           x':_ -> case x' of
-                                     Spacing _ ->
-                                         rmConsSpacing' xs acc
-                                     SpecialKeyword _ ->
-                                         rmConsSpacing' xs acc
-                                     _ -> rmConsSpacing' xs
-                                                         ((Spacing " "):acc)
-            SpecialKeyword _ -> case xs of
-                                  [] -> rmConsSpacing' [] (x:acc)
-                                  x':xs' -> case x' of
-                                              Spacing _ ->
-                                                  rmConsSpacing' (x:xs') acc
-                                              _ -> rmConsSpacing' xs (x:acc)
-            _ -> rmConsSpacing' xs (x:acc)
+-- remove consecutive spaces
+weakCompress :: [CodeToken] -> [CodeToken] -> [CodeToken]
+weakCompress [] acc = acc
+weakCompress (x:xs) acc =
+    case x of
+      Spacing _ -> case xs of
+                     [] -> weakCompress [] acc
+                     x':_ -> case x' of
+                               Spacing _ ->
+                                   weakCompress xs acc
+                               _ -> weakCompress xs ((Spacing " "):acc)
+      _ -> weakCompress xs (x:acc)
+
+-- remove consecutive spaces and spaces surrounding special keywords
+-- !!! the resulting code doesn't compile, so this changes semantics !!!
+-- !!! but may be useful in the future                               !!!
+strongCompress :: [CodeToken] -> [CodeToken] -> [CodeToken]
+strongCompress [] acc = acc
+strongCompress (x:xs) acc =
+    case x of
+      Spacing _ -> case xs of
+                     [] -> strongCompress [] acc
+                     x':_ -> case x' of
+                               Spacing _ ->
+                                   strongCompress xs acc
+                               SpecialKeyword _ ->
+                                   strongCompress xs acc
+                               _ -> strongCompress xs ((Spacing " "):acc)
+      SpecialKeyword _ -> case xs of
+                            [] -> strongCompress [] (x:acc)
+                            x':xs' -> case x' of
+                                        Spacing _ ->
+                                            strongCompress (x:xs') acc
+                                        _ -> strongCompress xs (x:acc)
+      _ -> strongCompress xs (x:acc)
 
 -- the following are special keywords, they can be glued together with
 -- non keywords
--- reference: http://www.haskell.org/haskellwiki/Keywords
-haskellLowKeywords :: [String]
-haskellLowKeywords =
+haskellSpecialKwds :: [String]
+haskellSpecialKwds =
     (reverse . uniq)
     ["_","(",")","[","]",",","/=","<","<=","==",">",">=","."
     ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
     ,"+","++","*","**","-","^","^^"]
 
-haskellHighKeywords :: [String]
-haskellHighKeywords =
+-- reference: http://www.haskell.org/haskellwiki/Keywords
+haskellStandardKwds :: [String]
+haskellStandardKwds =
     (reverse . uniq)
     ["as","case","of"
     ,"class","data","default","deriving","do","forall","foreign"

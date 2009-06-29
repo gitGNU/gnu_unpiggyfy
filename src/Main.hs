@@ -9,6 +9,7 @@ import CommentRemoval (rmCmtsWrapper)
 import CommentRemoval (lowLevelTokenizeWrapper, highLevelTokenizeWrapper)
 import CommentRemoval (tokenizeCodeWrapper)
 import CommentRemoval (compressCodeWrapper)
+import CommentRemoval (weakCompress)
 
 usage :: IO ()
 usage = (error . concat . (intersperse "\n"))
@@ -43,6 +44,7 @@ main =
                      mapM_ putStrLn (map show res)
              else if x == "-cc"
              then do res <- compressCodeWrapper (enforceFileParam xs)
+                                                weakCompress
                      mapM_ putStrLn res
              else usage
     where
