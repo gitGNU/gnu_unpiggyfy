@@ -443,11 +443,14 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
                                      toks
       StringInCode s -> tokenizeCodeLowLevel lowKwds highKwds
                                              ([VarOrFunOrConst s]:acc) toks
-      ShortCmt sc -> tokenizeCodeLowLevel lowKwds highKwds
-                                          ([ShortComment sc]:acc) toks
-      LongCmt sc -> tokenizeCodeLowLevel lowKwds highKwds
-                                         ([LongComment sc]:acc) toks
-      _ -> tokenizeCodeLowLevel lowKwds highKwds acc toks -- ignore other types
+      ShortCmt s -> tokenizeCodeLowLevel lowKwds highKwds
+                                         ([ShortComment s]:acc) toks
+      StringInShortCmt s -> tokenizeCodeLowLevel lowKwds highKwds
+                                                 ([ShortComment s]:acc) toks
+      LongCmt l -> tokenizeCodeLowLevel lowKwds highKwds
+                                        ([LongComment l]:acc) toks
+      StringInLongCmt l -> tokenizeCodeLowLevel lowKwds highKwds
+                                                ([LongComment l]:acc) toks
     where
       parseCode :: CodeStr -> [CodeToken] -> [CodeToken]
       parseCode [] acc' = reverse acc'
