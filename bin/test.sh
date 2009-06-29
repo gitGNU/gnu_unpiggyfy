@@ -85,4 +85,24 @@ else
 fi
 
 # -----------------------------------------------------------------------------
+test="CODE COMPRESSION"
+test_05_in=data/CommentRemoval.test_input
+test_05_out=tmp/CommentRemoval.test_05_output
+test_05_ref=data/CommentRemoval.test_05_reference
+test_05_diff=tmp/CommentRemoval.test_diff
+
+echo "testing "$test"..."
+
+bin/unpig -cc $test_05_in > $test_05_out
+diff 2>&1 $test_05_out $test_05_ref > $test_05_diff 2>&1
+
+if [ `wc -c $test_05_diff | awk '{print $1}'` -ne 0 ] ; then
+    echo "###"$test" ERRORS in diff "$test_05_out" "$test_05_ref
+    cat tmp/CommentRemoval.test_diff
+    exit 1
+else
+    echo "OK"
+fi
+
+# -----------------------------------------------------------------------------
 echo "### tests end ###"
