@@ -198,7 +198,7 @@
 [Spacing "                ",SpecialKeyword "(",VarOrFunOrConst "LineCmtMark",Spacing " ",VarOrFunOrConst "y",SpecialKeyword ",",Spacing " ",VarOrFunOrConst "LineCmtMark",Spacing " ",VarOrFunOrConst "z",SpecialKeyword ")",Spacing " ",SpecialKeyword "->"]
 [Spacing "                    ",SpecialKeyword "(",VarOrFunOrConst "LineCmtMark",Spacing " ",SpecialKeyword "(",VarOrFunOrConst "z",Spacing " ",SpecialKeyword "++",Spacing " ",VarOrFunOrConst "y",SpecialKeyword ")",SpecialKeyword ")",SpecialKeyword ":",VarOrFunOrConst "xs"]
 [Spacing "                ",ShortComment "-- consecutive StringBeginOrEnd low level tokens must not be"]
-[Spacing "                ",ShortComment "-- factorized together to manage correctly the empty string "]
+[Spacing "                ",ShortComment "-- factorized together to manage correctly the empty string ",ShortComment "\"\""]
 [Spacing "                ",SpecialKeyword "_",Spacing " ",SpecialKeyword "->",Spacing " ",VarOrFunOrConst "elt",SpecialKeyword ":",VarOrFunOrConst "lst"]
 []
 [VarOrFunOrConst "xor",Spacing " ",SpecialKeyword "::",Spacing " ",VarOrFunOrConst "Bool",Spacing " ",SpecialKeyword "->",Spacing " ",VarOrFunOrConst "Bool",Spacing " ",SpecialKeyword "->",Spacing " ",VarOrFunOrConst "Bool"]
