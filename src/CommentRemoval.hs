@@ -20,6 +20,12 @@ import System.IO
 
 type Token = String
 
+-- a tuple of ([long comment starters],[long comment stoppers]
+--            ,[short comment starters]
+--            ,[string delimiters]
+--            ,[escape characters])
+type LanguageTags = ([Token],[Token],[Token],[Token],[Token])
+
 -- A source file can be seen as a list of text lines. Each one
 -- being made of different items :
 -- source code, comments, comment delimiters, string constant, etc.
@@ -265,10 +271,10 @@ getLines fileName =
                Right line -> getLines' h (line:acc)
 
 -- file name to list of low level tokens
-tokenizeFile :: String -> [Token] -> [Token] -> [Token] -> [Token] -> [Token]
+tokenizeFile :: String -> LanguageTags
              -> IO [[LowLevelToken]]
-tokenizeFile fileName cmtStarters cmtStopers shortCmtStarters stringDelims
-             escChars =
+tokenizeFile fileName
+             (cmtStarters,cmtStopers,shortCmtStarters,stringDelims,escChars) =
     do readLines <- getLines fileName
        return (map (tokenizeSrcLine False
                                     cmtStarters cmtStopers shortCmtStarters
@@ -512,7 +518,7 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
 
 rmCmtsWrapper :: String -> IO [[HighLevelToken]]
 rmCmtsWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
+    do lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
            codeOnly = removeComments highLevelToks
        return codeOnly
@@ -522,19 +528,19 @@ rmCmtsWrapper fileName =
 
 lowLevelTokenizeWrapper :: String -> IO [[LowLevelToken]]
 lowLevelTokenizeWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
+    do lowLevelToks <- tokenizeFile fileName haskellTags
        return lowLevelToks
 
 highLevelTokenizeWrapper :: String -> IO [[HighLevelToken]]
 highLevelTokenizeWrapper fileName =
-    do lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
+    do lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
        return highLevelToks
 
 tokenizeCodeWrapper :: String -> IO [[CodeToken]]
 tokenizeCodeWrapper fileName =
     do checkKwds haskellSpecialKwds haskellStandardKwds
-       lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
+       lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
            codeToks = map (tokenizeCodeLowLevel haskellSpecialKwds
                                                 haskellStandardKwds [])
@@ -553,7 +559,7 @@ compressCodeWrapper :: String -> ([CodeToken] -> [CodeToken] -> [CodeToken])
                     -> IO [String]
 compressCodeWrapper fileName compressor =
     do checkKwds haskellSpecialKwds haskellStandardKwds
-       lowLevelToks <- tokenizeFile fileName ["{-"] ["-}"] ["--"] ["\""] ["\\"]
+       lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
            codeToks = map ((compress True []) .
                            (tokenizeCodeLowLevel haskellSpecialKwds
@@ -618,6 +624,9 @@ haskellSpecialKwds =
     ["_","(",")","[","]",",","/=","<","<=","==",">",">=","."
     ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
     ,"+","++","*","**","-","^","^^"]
+
+haskellTags :: LanguageTags
+haskellTags = (["{-"],["-}"],["--"],["\""],["\\"])
 
 -- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellStandardKwds :: [String]
