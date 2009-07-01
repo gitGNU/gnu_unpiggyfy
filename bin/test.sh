@@ -18,7 +18,7 @@ diff $test_01_out $test_01_ref > $test_01_diff 2>&1
 
 if [ `wc -c $test_01_diff | awk '{print $1}'` -ne 0 ] ; then
     echo "###"$test" ERRORS in diff "$test_01_out" "$test_01_ref
-    cat tmp/CommentRemoval.test_diff
+    head -6 tmp/CommentRemoval.test_diff
     exit 1
 else
     echo "OK"
@@ -38,7 +38,7 @@ diff $test_02_out $test_02_ref > $test_02_diff 2>&1
 
 if [ `wc -c $test_02_diff | awk '{print $1}'` -ne 0 ] ; then
     echo "###"$test" ERRORS in diff "$test_02_out" "$test_02_ref
-    cat tmp/CommentRemoval.test_diff
+    head -6 tmp/CommentRemoval.test_diff
     exit 1
 else
     echo "OK"
@@ -58,7 +58,7 @@ diff $test_04_out $test_04_ref > $test_04_diff 2>&1
 
 if [ `wc -c $test_04_diff | awk '{print $1}'` -ne 0 ] ; then
     echo "###"$test" ERRORS in diff "$test_04_out" "$test_04_ref
-    cat tmp/CommentRemoval.test_diff
+    head -6 tmp/CommentRemoval.test_diff
     exit 1
 else
     echo "OK"
@@ -78,7 +78,7 @@ diff $test_03_out $test_03_ref > $test_03_diff 2>&1
 
 if [ `wc -c $test_03_diff | awk '{print $1}'` -ne 0 ] ; then
     echo "###"$test" ERRORS in diff "$test_03_out" "$test_03_ref
-    cat tmp/CommentRemoval.test_diff
+    head -6 tmp/CommentRemoval.test_diff
     exit 1
 else
     echo "OK"
@@ -98,7 +98,7 @@ diff 2>&1 $test_05_out $test_05_ref > $test_05_diff 2>&1
 
 if [ `wc -c $test_05_diff | awk '{print $1}'` -ne 0 ] ; then
     echo "###"$test" ERRORS in diff "$test_05_out" "$test_05_ref
-    cat tmp/CommentRemoval.test_diff
+    head -6 tmp/CommentRemoval.test_diff
     exit 1
 else
     echo "OK"
