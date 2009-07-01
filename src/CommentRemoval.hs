@@ -1,5 +1,6 @@
 module CommentRemoval (
     HighLevelToken,
+    isCode, isShortCmt, isLongCmt,
     hltToString,
     isOnlyIndentationLine,
     rmCmtsWrapper,
@@ -41,6 +42,19 @@ data HighLevelToken = Code             CodeStr
                     | StringInShortCmt ShortCmtStr
                     | StringInLongCmt  LongCmtStr
                     deriving Show
+
+isCode, isShortCmt, isLongCmt :: HighLevelToken -> Bool
+isCode (Code _)         = True
+isCode (StringInCode _) = True
+isCode _                = False
+
+isShortCmt (ShortCmt _)         = True
+isShortCmt (StringInShortCmt _) = True
+isShortCmt _                    = False
+
+isLongCmt (LongCmt _)         = True
+isLongCmt (StringInLongCmt _) = True
+isLongCmt _                   = False
 
 type VarOrFunOrConstStr = String
 type KeywordStr         = String
@@ -438,20 +452,25 @@ tokenizeCodeLowLevel :: [KeywordStr] -> [KeywordStr] -> [[CodeToken]]
 tokenizeCodeLowLevel _ _ acc [] = (concat . reverse) acc
 tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
     case tok of
-      Code c -> tokenizeCodeLowLevel lowKwds highKwds
-                                     ((parseCode c []):acc)
-                                     toks
-      StringInCode s -> tokenizeCodeLowLevel lowKwds highKwds
-                                             ([VarOrFunOrConst s]:acc) toks
-      ShortCmt s -> tokenizeCodeLowLevel lowKwds highKwds
-                                         ([ShortComment s]:acc) toks
-      StringInShortCmt s -> tokenizeCodeLowLevel lowKwds highKwds
-                                                 ([ShortComment s]:acc) toks
-      LongCmt l -> tokenizeCodeLowLevel lowKwds highKwds
-                                        ([LongComment l]:acc) toks
-      StringInLongCmt l -> tokenizeCodeLowLevel lowKwds highKwds
-                                                ([LongComment l]:acc) toks
+      Code             s -> processCode s
+      StringInCode     s -> processStringInCode s
+      ShortCmt         s -> processShortCmt s
+      StringInShortCmt s -> processShortCmt s
+      LongCmt          s -> processLongCmt s
+      StringInLongCmt  s -> processLongCmt s
     where
+      processCode s = tokenizeCodeLowLevel lowKwds highKwds
+                                           ((parseCode s []):acc)
+                                           toks
+      processStringInCode s = tokenizeCodeLowLevel lowKwds highKwds
+                                                   ([VarOrFunOrConst s]:acc)
+                                                   toks
+      processShortCmt s = tokenizeCodeLowLevel lowKwds highKwds
+                                               ([ShortComment s]:acc)
+                                               toks
+      processLongCmt s = tokenizeCodeLowLevel lowKwds highKwds
+                                              ([LongComment s]:acc)
+                                              toks
       parseCode :: CodeStr -> [CodeToken] -> [CodeToken]
       parseCode [] acc' = reverse acc'
       parseCode code acc' =
@@ -500,11 +519,6 @@ rmCmtsWrapper fileName =
     where
       removeComments :: [[HighLevelToken]] -> [[HighLevelToken]]
       removeComments srcLine = map (filter isCode) srcLine
-
-      isCode :: HighLevelToken -> Bool
-      isCode (Code _)         = True
-      isCode (StringInCode _) = True
-      isCode _                = False
 
 lowLevelTokenizeWrapper :: String -> IO [[LowLevelToken]]
 lowLevelTokenizeWrapper fileName =
