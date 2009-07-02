@@ -1,6 +1,13 @@
-@TODO: 2'') put other languages in tests (C, Java, C++, PHP?), one after the
-            other
-       3)   extract inter line indentation rules
-       3')  externalize language dependent keywords to the CLI
-       3'') apply indentation rules
+@TODO: 2'') put other languages in tests (C, Java, C++), one after the other
+       3)   support more languages by adding predefined (tags,specKwds,stdKwds)
+            for supported languages into a new Language module
+       3')  extract inter line indentation rules
+       3'') apply these rules
        4)   extract intra line indentation rules
+       4')  apply these rules
+
+unscheduled tasks:
+       X)   be able to ignore parts of a source file in case the generic parser
+            fails, via a CLI option for example: --parse-as-string-in-code 'a'
+       Y)   verify if the tags parsing pass could not be done during the
+            special tags one
