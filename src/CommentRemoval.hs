@@ -616,6 +616,9 @@ strongCompress (x:xs) acc =
                                         _ -> strongCompress xs (x:acc)
       _ -> strongCompress xs (x:acc)
 
+haskellTags :: LanguageTags
+haskellTags = (["{-"],["-}"],["--"],["\""],["\\"])
+
 -- the following are special keywords, they can be glued together with
 -- non keywords
 haskellSpecialKwds :: [String]
@@ -624,9 +627,6 @@ haskellSpecialKwds =
     ["_","(",")","[","]",",","/=","<","<=","==",">",">=","."
     ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
     ,"+","++","*","**","-","^","^^"]
-
-haskellTags :: LanguageTags
-haskellTags = (["{-"],["-}"],["--"],["\""],["\\"])
 
 -- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellStandardKwds :: [String]
