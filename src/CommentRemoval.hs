@@ -18,13 +18,7 @@ import Data.Maybe
 import Data.List
 import System.IO
 
-type Token = String
-
--- a tuple of ([long comment starters],[long comment stoppers]
---            ,[short comment starters]
---            ,[string delimiters]
---            ,[escape characters])
-type LanguageTags = ([Token],[Token],[Token],[Token],[Token])
+import Languages
 
 -- A source file can be seen as a list of text lines. Each one
 -- being made of different items :
@@ -516,8 +510,8 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
                 (Spacing (y ++ x)):as
             _ -> tok':acc'
 
-rmCmtsWrapper :: String -> IO [[HighLevelToken]]
-rmCmtsWrapper fileName =
+rmCmtsWrapper :: String -> ParseInfo -> IO [[HighLevelToken]]
+rmCmtsWrapper fileName (haskellTags,_,_) =
     do lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
            codeOnly = removeComments highLevelToks
@@ -526,19 +520,20 @@ rmCmtsWrapper fileName =
       removeComments :: [[HighLevelToken]] -> [[HighLevelToken]]
       removeComments srcLine = map (filter isCode) srcLine
 
-lowLevelTokenizeWrapper :: String -> IO [[LowLevelToken]]
-lowLevelTokenizeWrapper fileName =
+lowLevelTokenizeWrapper :: String -> ParseInfo -> IO [[LowLevelToken]]
+lowLevelTokenizeWrapper fileName (haskellTags,_,_) =
     do lowLevelToks <- tokenizeFile fileName haskellTags
        return lowLevelToks
 
-highLevelTokenizeWrapper :: String -> IO [[HighLevelToken]]
-highLevelTokenizeWrapper fileName =
+highLevelTokenizeWrapper :: String -> ParseInfo -> IO [[HighLevelToken]]
+highLevelTokenizeWrapper fileName (haskellTags,_,_) =
     do lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
        return highLevelToks
 
-tokenizeCodeWrapper :: String -> IO [[CodeToken]]
-tokenizeCodeWrapper fileName =
+tokenizeCodeWrapper :: String -> ParseInfo -> IO [[CodeToken]]
+tokenizeCodeWrapper fileName
+                    (haskellTags,haskellSpecialKwds,haskellStandardKwds) =
     do checkKwds haskellSpecialKwds haskellStandardKwds
        lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
@@ -556,8 +551,10 @@ checkKwds l1 l2 =
     else return ()
 
 compressCodeWrapper :: String -> ([CodeToken] -> [CodeToken] -> [CodeToken])
+                    -> ParseInfo
                     -> IO [String]
-compressCodeWrapper fileName compressor =
+compressCodeWrapper fileName compressor
+                    (haskellTags,haskellSpecialKwds,haskellStandardKwds) =
     do checkKwds haskellSpecialKwds haskellStandardKwds
        lowLevelToks <- tokenizeFile fileName haskellTags
        let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
@@ -615,55 +612,3 @@ strongCompress (x:xs) acc =
                                             strongCompress (x:xs') acc
                                         _ -> strongCompress xs (x:acc)
       _ -> strongCompress xs (x:acc)
-
-haskellTags :: LanguageTags
-haskellTags = (["{-"],["-}"],["--"],["\""],["\\"])
-
--- special keywords can be glued together with non keywords
-haskellSpecialKwds :: [String]
-haskellSpecialKwds =
-    (reverse . uniq)
-    ["_","(",")","[","]",",","/=","<","<=","==",">",">=","."
-    ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
-    ,"+","++","*","**","-","^","^^"]
-
-haskellStandardKwds :: [String]
-haskellStandardKwds =
-    (reverse . uniq)
-    ["as","case","of"
-    ,"class","data","default","deriving","do","forall","foreign"
-    ,"hiding","if","then","else","import","infix","infixl"
-    ,"infixr","instance","let","in","mdo","module","newtype"
-    ,"qualified","type","where"]
-
-cTags :: LanguageTags
-cTags = (["/*"],["*/"],["//"],["\"","\'"],["\\"])
-
--- C99 keywords without GNU extension
-cStandardKwds :: [String]
-cStandardKwds =
-    (reverse . uniq)
-    ["auto","break","case","char","const","continue","default","do","double"
-    ,"else","enum","extern","float","for","goto","if","int","long","register"
-    ,"return","short","signed","sizeof","static","struct","switch","typedef"
-    ,"union","unsigned","void","volatile","while"]
-
--- what I call special keywords seem to be called
--- "punctuators, operators, and preprocessing tokens" in the litterature
-cSpecialKwds :: [String]
-cSpecialKwds =
-    (reverse . uniq)
-    ["[","]","(",")","{","}",",",":",";","*","=","...","#",".","->","++","--"
-    ,"##","&","+","-","~","!","/","%","<<",">>","!=","<",">","<=",">=","=="
-    ,"^","|","&&","||","?","*=","/=","%=","+=","-=","<<=",">>=","&=","^=","|="
-    ,"<:",":>","<%","%>","%:","%:%:"]
-
--- remove duplicates
-uniq :: Ord a => [a] -> [a]
-uniq l = uniq' (sort l) []
-    where uniq' :: Ord a => [a] -> [a] -> [a]
-          uniq' []     acc = reverse acc
-          uniq' (x:xs) acc = case xs of
-                               [] -> uniq' xs (x:acc)
-                               (x':_) | x == x' -> uniq' xs acc
-                                      | otherwise -> uniq' xs (x:acc)
