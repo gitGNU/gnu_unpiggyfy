@@ -7,24 +7,15 @@ TMP      = tmp
 UNPIG    = $(BIN)/unpig
 
 HC       = ghc
-HC_FLAGS = -W -Wall
+HFLAGS   = -W -Wall
 
-SRCS = $(SRC)/CommentRemoval.hs  $(SRC)/Main.hs
-OBJS = $(BUILD)/CommentRemoval.o $(BUILD)/Main.o
+SRCS = $(SRC)/Languages.hs $(SRC)/CommentRemoval.hs $(SRC)/Main.hs
 
 test: unpig
 	bin/test.sh
 
-unpig: $(OBJS)
-	$(HC) $(HC_FLAGS) -o $(UNPIG) $(OBJS)
-
-$(BUILD)/CommentRemoval.o:
-	$(HC) $(HC_FLAGS) -hidir $(BUILD) -odir $(BUILD) \
-              -c $(SRC)/CommentRemoval.hs
-
-$(BUILD)/Main.o:
-	$(HC) $(HC_FLAGS) -hidir $(BUILD) -odir $(BUILD) -i$(BUILD) \
-              -c $(SRC)/Main.hs
+unpig:
+	cd src && hmake Main && mv Main ../$(UNPIG) && mv *.hi *.o ../$(BUILD)/
 
 tags:
 	hasktags -e $(SRCS)
