@@ -619,8 +619,7 @@ strongCompress (x:xs) acc =
 haskellTags :: LanguageTags
 haskellTags = (["{-"],["-}"],["--"],["\""],["\\"])
 
--- the following are special keywords, they can be glued together with
--- non keywords
+-- special keywords can be glued together with non keywords
 haskellSpecialKwds :: [String]
 haskellSpecialKwds =
     (reverse . uniq)
@@ -628,7 +627,6 @@ haskellSpecialKwds =
     ,"||","|","&&","&","=","!","@","::",":","~","<-","->"
     ,"+","++","*","**","-","^","^^"]
 
--- reference: http://www.haskell.org/haskellwiki/Keywords
 haskellStandardKwds :: [String]
 haskellStandardKwds =
     (reverse . uniq)
@@ -637,6 +635,28 @@ haskellStandardKwds =
     ,"hiding","if","then","else","import","infix","infixl"
     ,"infixr","instance","let","in","mdo","module","newtype"
     ,"qualified","type","where"]
+
+cTags :: LanguageTags
+cTags = (["/*"],["*/"],["//"],["\"","\'"],["\\"])
+
+-- C99 keywords without GNU extension
+cStandardKwds :: [String]
+cStandardKwds =
+    (reverse . uniq)
+    ["auto","break","case","char","const","continue","default","do","double"
+    ,"else","enum","extern","float","for","goto","if","int","long","register"
+    ,"return","short","signed","sizeof","static","struct","switch","typedef"
+    ,"union","unsigned","void","volatile","while"]
+
+-- what I call special keywords seem to be called
+-- "punctuators, operators, and preprocessing tokens" in the litterature
+cSpecialKwds :: [String]
+cSpecialKwds =
+    (reverse . uniq)
+    ["[","]","(",")","{","}",",",":",";","*","=","...","#",".","->","++","--"
+    ,"##","&","+","-","~","!","/","%","<<",">>","!=","<",">","<=",">=","=="
+    ,"^","|","&&","||","?","*=","/=","%=","+=","-=","<<=",">>=","&=","^=","|="
+    ,"<:",":>","<%","%>","%:","%:%:"]
 
 -- remove duplicates
 uniq :: Ord a => [a] -> [a]
