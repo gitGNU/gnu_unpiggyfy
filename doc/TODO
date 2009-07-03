@@ -11,3 +11,11 @@ unscheduled tasks:
             fails, via a CLI option for example: --parse-as-string-in-code 'a'
        Y)   verify if the tags parsing pass could not be done during the
             special tags one
+       W)   do an emacs mode to syntax highlight various output formats from
+            unpig
+       Z)   create a FAQ, add the question "How to support a new language?"
+            * send us the operators, keywords, etc. and reference information
+              so we can verify we can support this language
+            * send us a big file that can be syntactically validated by a
+              compiler for this language
+       V)   package for various distros and at least one BSD
