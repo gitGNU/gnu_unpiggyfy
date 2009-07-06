@@ -1,0 +1,6 @@
+* A Haskell compiler, successfully tested with
+  "The Glorious Glasgow Haskell Compilation System, version 6.8.2"
+* hmake, successfully tested with
+  /usr/bin/hmake: 3.13 (2006-11-01)
+* make
+* Bash for the test script and Makefile
