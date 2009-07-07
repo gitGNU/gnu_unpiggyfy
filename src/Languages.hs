@@ -1,19 +1,30 @@
 module Languages (
+    SupportedLanguage(..),
     Token,
     LanguageTags,
     ParseInfo,
+    findLanguage,
     haskellParseInfo,
     cParseInfo,
 ) where
 
 import Data.List
 
-type Token = String
+data SupportedLanguage = C
+                       | Haskell
+                       deriving Show
+
+-- what programming language the user want us to analyze
+findLanguage :: String -> Either String SupportedLanguage
+findLanguage s | s == "C"  = Right C
+               | s == "HS" = Right Haskell
+               | otherwise = Left ("unsupported language: " ++ s)
 
 -- a tuple of ([long comment starters],[long comment stoppers]
 --            ,[short comment starters]
 --            ,[string delimiters]
 --            ,[escape characters])
+type Token = String
 type LanguageTags = ([Token],[Token],[Token],[Token],[Token])
 
 type ParseInfo = (LanguageTags, [String], [String])

@@ -1,6 +1,7 @@
 module Main where
 
 import Data.List (intersperse)
+import Data.Maybe (Maybe)
 import System.Environment (getArgs)
 
 import Languages
@@ -13,15 +14,30 @@ import CommentRemoval (tokenizeCodeWrapper)
 import CommentRemoval (compressCodeWrapper)
 import CommentRemoval (weakCompress)
 
+data Mode = Help
+          | RemoveComments
+          | TokenizeLowLevel
+          | TokenizeHighLevel
+          | TokenizeCode
+          | CompressCode
+          deriving Show
+
+type Options = (Mode, Maybe SupportedLanguage, Maybe FilePath)
+
 usage :: IO ()
 usage = (error . concat . (intersperse "\n"))
-            ["usage"
-            ," -h | --help    -> what you are reading now"
-            ," -rc  file-name -> remove comments"
-            ," -llt file-name -> tokenize low level"
-            ," -hlt file-name -> tokenize high level"
-            ," -tc  file-name -> tokenize code only"
-            ," -cc  file-name -> compress code"]
+            ["usage:"
+            ," { -h } | { -lg { C | HS } -{ rc | llt | hlt | tc | cc }"
+            ,"            -i FILE }"
+            ," h | help  -> what you are reading now"
+            ," lg {C,HS}      -> your source code's language"
+            ,"   rc           -> remove comments"
+            ,"   llt          -> low level tokenization"
+            ,"   hlt          -> high level tokenization"
+            ,"   tc           -> tokenize code"
+            ,"   cc           -> compress code"
+            ,"   i input-file -> source file to read from"
+            ,"   ### HS stands for Haskell"]
 
 main :: IO ()
 main =
@@ -57,5 +73,8 @@ main =
     where
       onlyIndentOrNull x = null x || isOnlyIndentationLine x
 
-      enforceFileParam [] = error "no file name given"
-      enforceFileParam (f:_) = f
+enforceFileParam [] = error "no file name given"
+enforceFileParam (f:_) = f
+
+enforceStringParam [] = error "no string given"
+enforceStringParam (f:_) = f
