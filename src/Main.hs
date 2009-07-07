@@ -2,7 +2,13 @@ module Main where
 
 import Data.List (intersperse)
 import Data.Maybe (Maybe)
-import System.Environment (getArgs)
+
+import System.Console.GetOpt
+import System
+import Control.Monad
+import IO
+import List
+import Char
 
 import Languages
 
@@ -14,21 +20,63 @@ import CommentRemoval (tokenizeCodeWrapper)
 import CommentRemoval (compressCodeWrapper)
 import CommentRemoval (weakCompress)
 
-data Mode = Help
-          | RemoveComments
+data Mode = RemoveComments
           | TokenizeLowLevel
           | TokenizeHighLevel
           | TokenizeCode
           | CompressCode
           deriving Show
 
-type Options = (Mode, Maybe SupportedLanguage, Maybe FilePath)
+type LangSourceFile = (SupportedLanguage, FilePath)
+
+data ParsedCommandLine = Help
+                       | Action Mode LangSourceFile
+                       deriving Show
+
+-- args become either an error message or a parsed command line
+parseCommandLine :: [String]
+                 -> Maybe SupportedLanguage -> Maybe FilePath -> Maybe Mode
+                 -> Either String ParsedCommandLine
+parseCommandLine [] Nothing Nothing _       =
+    Left "no language and filename provided"
+parseCommandLine [] Nothing _       _       =
+    Left "unsupported or unprovided language option"
+parseCommandLine [] _       Nothing _       =
+    Left "no filename provided"
+parseCommandLine [] _       _       Nothing =
+    Left "no mode provided"
+parseCommandLine [] (Just lg) (Just filename) (Just mode) =
+    Right (Action mode (lg, filename))
+parseCommandLine (arg:args) lg filename mode =
+    case arg of
+      "-rc"  ->   parseCommandLine args lg filename (Just RemoveComments)
+      "-llt" ->   parseCommandLine args lg filename (Just TokenizeLowLevel)
+      "-hlt" ->   parseCommandLine args lg filename (Just TokenizeHighLevel)
+      "-tc"  ->   parseCommandLine args lg filename (Just TokenizeCode)
+      "-cc"  ->   parseCommandLine args lg filename (Just CompressCode)
+      "-h"     -> Right Help
+      "--help" -> Right Help
+      _        -> if isPrefixOf langPrfx arg then
+                      parseCommandLine
+                        args
+                        (findLanguage (drop (length langPrfx) arg))
+                        filename mode
+                  else if isPrefixOf inputPrfx arg then
+                      parseCommandLine
+                        args
+                        lg
+                        (maybeFilename (drop (length inputPrfx) arg))
+                        mode
+                  else Right Help
+    where
+      langPrfx  = "-lg:"
+      inputPrfx = "-i:"
 
 usage :: IO ()
 usage = (error . concat . (intersperse "\n"))
             ["usage:"
-            ," { -h } | { -lg { C | HS } -{ rc | llt | hlt | tc | cc }"
-            ,"            -i FILE }"
+            ," { -h } | { -lg: { C | HS } -{ rc | llt | hlt | tc | cc }"
+            ,"            -i:FILE }"
             ," h | help  -> what you are reading now"
             ," lg {C,HS}      -> your source code's language"
             ,"   rc           -> remove comments"
@@ -42,34 +90,29 @@ usage = (error . concat . (intersperse "\n"))
 main :: IO ()
 main =
     do args <- getArgs
---       mapM_ print args -- uncomment to inspect command line
-       case args of
-         [] -> usage
-         x:xs ->
-             if x == "-rc"
-             then do res <- rmCmtsWrapper (enforceFileParam xs)
-                                          haskellParseInfo
-                     let res' = filter (not . onlyIndentOrNull) res
-                         res'' = map (map hltToString) res'
-                     mapM_ putStrLn (map concat res'')
-             else if x == "-llt"
-             then do res <- lowLevelTokenizeWrapper (enforceFileParam xs)
-                                                    haskellParseInfo
-                     mapM_ putStrLn (map show res)
-             else if x == "-hlt"
-             then do res <- highLevelTokenizeWrapper (enforceFileParam xs)
-                                                     haskellParseInfo
-                     mapM_ putStrLn (map show res)
-             else if x == "-tc"
-             then do res <- tokenizeCodeWrapper (enforceFileParam xs)
-                                                haskellParseInfo
-                     mapM_ putStrLn (map show res)
-             else if x == "-cc"
-             then do res <- compressCodeWrapper (enforceFileParam xs)
-                                                weakCompress
-                                                haskellParseInfo
-                     mapM_ putStrLn res
-             else usage
+--     mapM_ print args -- uncomment to inspect command line
+       case parseCommandLine args Nothing Nothing Nothing of
+         Left errMsg -> do hPutStrLn stderr ("unpig: error:" ++ errMsg)
+                           usage
+         Right Help -> usage
+         Right (Action RemoveComments    (lang, file)) ->
+             do res <- rmCmtsWrapper file (getParseInfo lang)
+                let res'  = filter (not . onlyIndentOrNull) res
+                    res'' = map (map hltToString) res'
+                mapM_ putStrLn (map concat res'')
+         Right (Action TokenizeLowLevel  (lang, file)) ->
+             do res <- lowLevelTokenizeWrapper file (getParseInfo lang)
+                mapM_ putStrLn (map show res)
+         Right (Action TokenizeHighLevel (lang, file)) ->
+             do res <- highLevelTokenizeWrapper file (getParseInfo lang)
+                mapM_ putStrLn (map show res)
+         Right (Action TokenizeCode      (lang, file)) ->
+             do res <- tokenizeCodeWrapper file (getParseInfo lang)
+                mapM_ putStrLn (map show res)
+         Right (Action CompressCode      (lang, file)) ->
+             do res <- compressCodeWrapper file weakCompress
+                                           (getParseInfo lang)
+                mapM_ putStrLn res
     where
       onlyIndentOrNull x = null x || isOnlyIndentationLine x
 
