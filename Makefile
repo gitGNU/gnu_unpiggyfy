@@ -12,10 +12,11 @@ HFLAGS   = -W -Wall
 SRCS = $(SRC)/Languages.hs $(SRC)/CommentRemoval.hs $(SRC)/Main.hs
 
 test: unpig
-	bin/test.sh
+	./bin/test.sh
 
 unpig:
-	cd src && hmake Main && mv Main ../$(UNPIG) && mv *.hi *.o ../$(BUILD)/
+	cd src && hmake -q Main && mv Main ../$(UNPIG) && \
+        mv *.hi *.o ../$(BUILD)/
 
 tags:
 	hasktags -e $(SRCS)
