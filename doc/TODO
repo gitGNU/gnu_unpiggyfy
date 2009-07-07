@@ -1,5 +1,4 @@
-@TODO: 1')  put examples in --help
-       2'') put other languages in tests (C, Java, C++), one after the other
+@TODO: 2'') put other languages in tests (C, Java, C++), one after the other
        3')  extract inter line indentation rules
        3'') apply these rules
        4)   extract intra line indentation rules

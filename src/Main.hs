@@ -80,7 +80,8 @@ usage = (error . concat . (intersperse "\n"))
             ,"   -llt     -> low level tokenization mode"
             ,"   -hlt     -> high level tokenization mode"
             ,"   -tc      -> tokenize code mode"
-            ,"   -cc      -> compress code mode"]
+            ,"   -cc      -> compress code mode"
+            ,"EXAMPLE: unpig -i:src/Main.hs -lg:HS -hlt"]
 
 main :: IO ()
 main =
