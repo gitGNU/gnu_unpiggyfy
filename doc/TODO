@@ -1,6 +1,5 @@
-@TODO: 2'') put other languages in tests (C, Java, C++), one after the other
-       3)   support more languages by adding predefined (tags,specKwds,stdKwds)
-            for supported languages into a new Language module
+@TODO: 1)   deep test CLI to verify error messages are always speakful enough
+       2'') put other languages in tests (C, Java, C++), one after the other
        3')  extract inter line indentation rules
        3'') apply these rules
        4)   extract intra line indentation rules
