@@ -4,8 +4,8 @@ module Languages (
     LanguageTags,
     ParseInfo,
     findLanguage,
-    haskellParseInfo,
-    cParseInfo,
+    maybeFilename,
+    getParseInfo,
 ) where
 
 import Data.List
@@ -15,10 +15,14 @@ data SupportedLanguage = C
                        deriving Show
 
 -- what programming language the user want us to analyze
-findLanguage :: String -> Either String SupportedLanguage
-findLanguage s | s == "C"  = Right C
-               | s == "HS" = Right Haskell
-               | otherwise = Left ("unsupported language: " ++ s)
+findLanguage :: String -> Maybe SupportedLanguage
+findLanguage s | s == "C"  = Just C
+               | s == "HS" = Just Haskell
+               | otherwise = Nothing -- unsupported language
+
+maybeFilename :: FilePath -> Maybe FilePath
+maybeFilename [] = Nothing
+maybeFilename s  = Just s
 
 -- a tuple of ([long comment starters],[long comment stoppers]
 --            ,[short comment starters]
@@ -76,6 +80,10 @@ cSpecialKwds =
 
 cParseInfo :: ParseInfo
 cParseInfo = (cTags, cSpecialKwds, cStandardKwds)
+
+getParseInfo :: SupportedLanguage -> ParseInfo
+getParseInfo C       = cParseInfo
+getParseInfo Haskell = haskellParseInfo
 
 -- remove duplicates
 uniq :: Ord a => [a] -> [a]
