@@ -15,10 +15,10 @@ data SupportedLanguage = C
                        deriving Show
 
 -- what programming language the user want us to analyze
-findLanguage :: String -> Maybe SupportedLanguage
-findLanguage s | s == "C"  = Just C
-               | s == "HS" = Just Haskell
-               | otherwise = Nothing -- unsupported language
+findLanguage :: String -> Either String SupportedLanguage
+findLanguage s | s == "C"  = Right C
+               | s == "HS" = Right Haskell
+               | otherwise = Left ("unsupported language: " ++ s)
 
 maybeFilename :: FilePath -> Maybe FilePath
 maybeFilename [] = Nothing
