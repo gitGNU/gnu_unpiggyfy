@@ -28,3 +28,28 @@ lltToString (CmtBegin          s) = s
 lltToString (CmtEnd            s) = s
 lltToString (LineCmtMark       s) = s
 lltToString (StringBeginOrEnd  s) = s
+
+-------------------------------------------------------------------------------
+data Options = Help
+             | Input String
+             deriving Show
+
+options :: [OptDescr Options]
+options =
+    [ Option ['h'] ["help"] (NoArg Help)        "user help"
+    , Option ['r'] ["rc"]   (OptArg inp "FILE") "remove comments"
+    , Option ['l'] ["llt"]  (OptArg inp "FILE") "low level tokenization"
+    , Option ['h'] ["hlt"]  (OptArg inp "FILE") "high level tokenization"
+    , Option ['t'] ["tc"]   (OptArg inp "FILE") "tokenize code"
+    , Option ['c'] ["cc"]   (OptArg inp "FILE") "compress code"
+    ]
+
+inp :: Maybe String -> Options
+inp  = Input  . fromMaybe "stdin"
+
+compilerOpts :: [String] -> IO ([Options], [String])
+compilerOpts argv =
+   case getOpt Permute options argv of
+      (o,n,[]  ) -> return (o,n)
+      (_,_,errs) -> ioError (userError (concat errs ++ usageInfo header options))
+  where header = "Usage: unpig [OPTION...] files..."
