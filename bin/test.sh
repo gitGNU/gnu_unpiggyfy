@@ -13,7 +13,7 @@ test_01_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
 
-bin/unpig -llt $test_01_in > $test_01_out
+./bin/unpig -lg:HS -llt -i:$test_01_in > $test_01_out
 diff $test_01_out $test_01_ref > $test_01_diff 2>&1
 
 if [ `wc -c $test_01_diff | awk '{print $1}'` -ne 0 ] ; then
@@ -33,7 +33,7 @@ test_02_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
 
-bin/unpig -hlt $test_02_in > $test_02_out
+./bin/unpig -lg:HS -hlt -i:$test_02_in > $test_02_out
 diff $test_02_out $test_02_ref > $test_02_diff 2>&1
 
 if [ `wc -c $test_02_diff | awk '{print $1}'` -ne 0 ] ; then
@@ -53,7 +53,7 @@ test_04_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
 
-bin/unpig -tc $test_04_in > $test_04_out
+./bin/unpig -lg:HS -tc -i:$test_04_in > $test_04_out
 diff $test_04_out $test_04_ref > $test_04_diff 2>&1
 
 if [ `wc -c $test_04_diff | awk '{print $1}'` -ne 0 ] ; then
@@ -73,7 +73,7 @@ test_03_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
 
-bin/unpig -rc $test_03_in > $test_03_out
+./bin/unpig -lg:HS -rc -i:$test_03_in > $test_03_out
 diff $test_03_out $test_03_ref > $test_03_diff 2>&1
 
 if [ `wc -c $test_03_diff | awk '{print $1}'` -ne 0 ] ; then
@@ -93,7 +93,7 @@ test_05_diff=tmp/CommentRemoval.test_diff
 
 echo "testing "$test"..."
 
-bin/unpig -cc $test_05_in > $test_05_out
+./bin/unpig -lg:HS -cc -i:$test_05_in > $test_05_out
 diff 2>&1 $test_05_out $test_05_ref > $test_05_diff 2>&1
 
 if [ `wc -c $test_05_diff | awk '{print $1}'` -ne 0 ] ; then
