@@ -277,20 +277,20 @@ tokenizeFile fileName
 
 -- low to high level tokens
 highLevelTokens :: [[LowLevelToken]] -> ParserState -> Int
-                -> [HighLevelToken] -> [[HighLevelToken]]
+                -> [HighLevelToken] -> Int -> [[HighLevelToken]]
                 -> [[HighLevelToken]]
-highLevelTokens [] _ _ _ acc = reverse acc
-highLevelTokens (line:others) parserState depth lineAcc acc =
+highLevelTokens [] _ _ _ _ acc = reverse acc
+highLevelTokens (line:others) parserState depth lineAcc n acc =
     case line of
       -- finished current line
       [] -> case parserState of
               ReadingShortCmt ->
                   -- state only valid until end of current line
                   highLevelTokens others ReadingCode
-                                  depth [] ((reverse lineAcc):acc)
+                                  depth [] nextLine ((reverse lineAcc):acc)
               _ ->
                   highLevelTokens others parserState
-                                  depth [] ((reverse lineAcc):acc)
+                                  depth [] nextLine ((reverse lineAcc):acc)
       -- continuing current line
       tok:toks ->
           case parserState of
@@ -299,35 +299,38 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                   CmtOrCodeOrString _ ->
                       highLevelTokens
                          (toks:others) parserState
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   LineCmtMark _ ->
                       highLevelTokens
                          (toks:others) ReadingShortCmt
-                         depth (factorize ReadingShortCmt tok lineAcc) acc
+                         depth (factorize ReadingShortCmt tok lineAcc) n acc
                   CmtBegin _ ->
                       highLevelTokens
                          (toks:others) ReadingLongCmt
-                         (depth+1) (factorize parserState tok lineAcc) acc
+                         (depth+1) (factorize parserState tok lineAcc) n acc
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInCode
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   CmtEnd mark ->
-                      error ("got EndCmtMArk while ReadingCode: " ++ mark)
+                      error (linePrfx ++
+                             "got EndCmtMArk while ReadingCode: " ++ mark)
                   EscapedChar esc ->
-                      error ("got EscapedChar while ReadingCode: " ++ esc)
+                      error (linePrfx ++
+                             "got EscapedChar while ReadingCode: " ++ esc)
             ReadingShortCmt ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInShortCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   EscapedChar esc ->
-                      error ("got EscapedChar while ReadingShortCmt: " ++ esc)
+                      error (linePrfx ++
+                             "got EscapedChar while ReadingShortCmt: " ++ esc)
                   _ ->
                       highLevelTokens
                          (toks:others) parserState
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingLongCmt ->
                 case tok of
                   CmtEnd _ ->
@@ -335,100 +338,102 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
                       if newDepth == 0 then
                           highLevelTokens
                              (toks:others) ReadingCode
-                             newDepth (factorize parserState tok lineAcc) acc
+                             newDepth (factorize parserState tok lineAcc) n acc
                       else
                           highLevelTokens
                             (toks:others) parserState
-                            newDepth (factorize parserState tok lineAcc) acc
+                            newDepth (factorize parserState tok lineAcc) n acc
                   CmtBegin _ ->
                       let newDepth = depth + 1 in
                       highLevelTokens
                          (toks:others) parserState
-                         newDepth (factorize parserState tok lineAcc) acc
+                         newDepth (factorize parserState tok lineAcc) n acc
                   CmtOrCodeOrString _ ->
                       highLevelTokens
                          (toks:others) parserState
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   LineCmtMark mark ->
-                      error ("got LineCmtMark while ReadingLongCmt: " ++ mark)
+                      error (linePrfx ++
+                             "got LineCmtMark while ReadingLongCmt: " ++ mark)
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInLongCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   EscapedChar esc ->
-                      error ("got EscapedChar while ReadingLongCmt: " ++ esc)
+                      error (linePrfx ++
+                             "got EscapedChar while ReadingLongCmt: " ++ esc)
             ReadingStringInLongCmt ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingLongCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   EscapedChar _ ->
                       highLevelTokens
                          (toks:others) ReadingEscCharInStringInLongCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   _ ->
                       highLevelTokens
                          (toks:others) parserState
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingStringInShortCmt ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingShortCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   EscapedChar _ ->
                       highLevelTokens
                          (toks:others) ReadingEscCharInStringInShortCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   _ ->
                       highLevelTokens
                          (toks:others) parserState
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingStringInCode ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingCode
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   EscapedChar _ ->
                       highLevelTokens
                          (toks:others) ReadingEscCharInStringInCode
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   _ ->
                       highLevelTokens
                          (toks:others) parserState
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingEscCharInStringInCode ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingCode
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInCode
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingEscCharInStringInShortCmt ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingShortCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInShortCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingEscCharInStringInLongCmt ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingLongCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
                   _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInLongCmt
-                         depth (factorize parserState tok lineAcc) acc
+                         depth (factorize parserState tok lineAcc) n acc
     where
       factorize :: ParserState -> LowLevelToken -> [HighLevelToken]
                 -> [HighLevelToken]
@@ -445,6 +450,8 @@ highLevelTokens (line:others) parserState depth lineAcc acc =
           (StringInLongCmt y, StringInLongCmt z) ->
               (StringInLongCmt (y ++ z)):xs
           _ -> elt':lst
+      !nextLine = n + 1
+      linePrfx = "line " ++ (show n) ++ ": "
 
 -- HighLevelTokens to CodeTokens, non Code high level tokens disappear
 tokenizeCodeLowLevel :: [KeywordStr] -> [KeywordStr] -> [[CodeToken]]
@@ -513,7 +520,7 @@ tokenizeCodeLowLevel lowKwds highKwds acc (tok:toks) =
 rmCmtsWrapper :: String -> ParseInfo -> IO [[HighLevelToken]]
 rmCmtsWrapper fileName (haskellTags,_,_) =
     do lowLevelToks <- tokenizeFile fileName haskellTags
-       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
+       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] 1 []
            codeOnly = removeComments highLevelToks
        return codeOnly
     where
@@ -528,7 +535,7 @@ lowLevelTokenizeWrapper fileName (haskellTags,_,_) =
 highLevelTokenizeWrapper :: String -> ParseInfo -> IO [[HighLevelToken]]
 highLevelTokenizeWrapper fileName (haskellTags,_,_) =
     do lowLevelToks <- tokenizeFile fileName haskellTags
-       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
+       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] 1 []
        return highLevelToks
 
 tokenizeCodeWrapper :: String -> ParseInfo -> IO [[CodeToken]]
@@ -536,7 +543,7 @@ tokenizeCodeWrapper fileName
                     (haskellTags,haskellSpecialKwds,haskellStandardKwds) =
     do checkKwds haskellSpecialKwds haskellStandardKwds
        lowLevelToks <- tokenizeFile fileName haskellTags
-       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
+       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] 1 []
            codeToks = map (tokenizeCodeLowLevel haskellSpecialKwds
                                                 haskellStandardKwds [])
                           highLevelToks
@@ -557,7 +564,7 @@ compressCodeWrapper fileName compressor
                     (haskellTags,haskellSpecialKwds,haskellStandardKwds) =
     do checkKwds haskellSpecialKwds haskellStandardKwds
        lowLevelToks <- tokenizeFile fileName haskellTags
-       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] []
+       let highLevelToks = highLevelTokens lowLevelToks ReadingCode 0 [] 1 []
            codeToks = map ((compress True []) .
                            (tokenizeCodeLowLevel haskellSpecialKwds
                                                  haskellStandardKwds []))
