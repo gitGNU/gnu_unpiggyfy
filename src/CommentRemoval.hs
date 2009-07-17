@@ -129,12 +129,9 @@ promote ReadingStringInLongCmt  (StringBeginOrEnd  x) = StringInLongCmt  x
 promote ReadingStringInCode     (EscapedChar       x) = StringInCode     x
 promote ReadingStringInShortCmt (EscapedChar       x) = StringInShortCmt x
 promote ReadingStringInLongCmt  (EscapedChar       x) = StringInLongCmt  x
-promote ReadingCode             (EscapedChar       x) =
-    error ("while ReadingCode, got EscapedChar: " ++ x)
-promote ReadingShortCmt         (EscapedChar       x) =
-    error ("while ReadingShortCmt, got EscapedChar: " ++ x)
-promote ReadingLongCmt          (EscapedChar       x) =
-    error ("while ReadingLongCmt, got EscapedChar: " ++ x)
+promote ReadingCode             (EscapedChar       x) = Code             x
+promote ReadingShortCmt         (EscapedChar       x) = ShortCmt         x
+promote ReadingLongCmt          (EscapedChar       x) = ShortCmt         x
 promote ReadingEscCharInStringInCode               x  = StringInCode
                                                           (lltToString x)
 promote ReadingEscCharInStringInShortCmt           x  = StringInShortCmt
@@ -315,18 +312,16 @@ highLevelTokens (line:others) parserState depth lineAcc n acc =
                   CmtEnd mark ->
                       error (linePrfx ++
                              "got EndCmtMArk while ReadingCode: " ++ mark)
-                  EscapedChar esc ->
-                      error (linePrfx ++
-                             "got EscapedChar while ReadingCode: " ++ esc)
+                  _ ->
+                      highLevelTokens
+                         (toks:others) ReadingCode
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingShortCmt ->
                 case tok of
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInShortCmt
                          depth (factorize parserState tok lineAcc) n acc
-                  EscapedChar esc ->
-                      error (linePrfx ++
-                             "got EscapedChar while ReadingShortCmt: " ++ esc)
                   _ ->
                       highLevelTokens
                          (toks:others) parserState
@@ -352,16 +347,14 @@ highLevelTokens (line:others) parserState depth lineAcc n acc =
                       highLevelTokens
                          (toks:others) parserState
                          depth (factorize parserState tok lineAcc) n acc
-                  LineCmtMark mark ->
-                      error (linePrfx ++
-                             "got LineCmtMark while ReadingLongCmt: " ++ mark)
                   StringBeginOrEnd _ ->
                       highLevelTokens
                          (toks:others) ReadingStringInLongCmt
                          depth (factorize parserState tok lineAcc) n acc
-                  EscapedChar esc ->
-                      error (linePrfx ++
-                             "got EscapedChar while ReadingLongCmt: " ++ esc)
+                  _ ->
+                      highLevelTokens
+                         (toks:others) ReadingLongCmt
+                         depth (factorize parserState tok lineAcc) n acc
             ReadingStringInLongCmt ->
                 case tok of
                   StringBeginOrEnd _ ->
