@@ -57,7 +57,7 @@ haskellParseInfo :: ParseInfo
 haskellParseInfo = (haskellTags, haskellSpecialKwds, haskellStandardKwds)
 
 cTags :: LanguageTags
-cTags = (["/*"],["*/"],["//"],["\"","\'"],["\\"])
+cTags = (["/*"],["*/"],["//"],["\""],["\\"])
 
 -- C99 keywords without GNU extension
 cStandardKwds :: [String]
