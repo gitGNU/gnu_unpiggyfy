@@ -55,7 +55,7 @@ extern int optind ;
 
 #define MAX_LENGTH_LINE 16384 //Maximum number of characters allowed in a line for the output file or socket
 
-//----------------------------------- Other variable declarations -----------------------------------------------
+//----------------------------------- Other variable declarations ----------------------------------------------- \n
 //Global because needed by signal interrupts
 int NbItemsFound  = 0 ;
 int NbSetsSent  = 0 ;
