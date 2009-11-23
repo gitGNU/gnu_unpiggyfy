@@ -1,0 +1,11 @@
+Usage examples:
+
+$ cat commands_list_file | demux
+
+or
+
+$ demux commands_list_file
+
+n.b.: 'cat commands_list_file' could be replaced by a not so simple
+command generating a lot of commands to execute (a complex pipe for
+example).
